@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     Award,
     BarChart3,
+    Barcode,
     Building2,
     ChevronRight,
     CircleDollarSign,
@@ -50,6 +51,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
+import barcodeSettingsRoutes from '@/routes/barcode-settings';
 import brands from '@/routes/brands';
 import customerGroups from '@/routes/customer-groups';
 import customers from '@/routes/customers';
@@ -161,6 +163,12 @@ const receiptPrinterUrl = computed(() =>
         : '/',
 );
 
+const barcodeSettingsUrl = computed(() =>
+    page.props.currentTeam
+        ? barcodeSettingsRoutes.edit.url(page.props.currentTeam.slug)
+        : '/',
+);
+
 const contactsOpen = ref(false);
 const userManagementOpen = ref(false);
 const settingsOpen = ref(false);
@@ -221,11 +229,18 @@ watch(
 );
 
 watch(
-    () => [page.url, taxesUrl.value, receiptPrinterUrl.value] as const,
+    () =>
+        [
+            page.url,
+            taxesUrl.value,
+            receiptPrinterUrl.value,
+            barcodeSettingsUrl.value,
+        ] as const,
     () => {
         settingsOpen.value =
             isCurrentUrl(taxesUrl.value) ||
-            isCurrentUrl(receiptPrinterUrl.value);
+            isCurrentUrl(receiptPrinterUrl.value) ||
+            isCurrentUrl(barcodeSettingsUrl.value);
     },
     { immediate: true },
 );
@@ -555,7 +570,8 @@ const collapsibleNav = [
                                 <SidebarMenuButton
                                     :is-active="
                                         isCurrentUrl(taxesUrl) ||
-                                        isCurrentUrl(receiptPrinterUrl)
+                                        isCurrentUrl(receiptPrinterUrl) ||
+                                        isCurrentUrl(barcodeSettingsUrl)
                                     "
                                     tooltip="Settings"
                                 >
@@ -591,6 +607,20 @@ const collapsibleNav = [
                                             <Link :href="receiptPrinterUrl">
                                                 <PrinterIcon />
                                                 <span>Receipt printer</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(barcodeSettingsUrl)
+                                            "
+                                        >
+                                            <Link :href="barcodeSettingsUrl">
+                                                <Barcode />
+                                                <span>Barcode settings</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>

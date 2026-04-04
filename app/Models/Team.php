@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'slug', 'is_personal', 'receipt_printer_settings'])]
+#[Fillable(['name', 'slug', 'is_personal', 'receipt_printer_settings', 'barcode_settings'])]
 class Team extends Model
 {
     /** @use HasFactory<TeamFactory> */
@@ -195,6 +195,7 @@ class Team extends Model
         return [
             'is_personal' => 'boolean',
             'receipt_printer_settings' => 'array',
+            'barcode_settings' => 'array',
         ];
     }
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\ProductCategories\ProductCategoryController;
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\SalesCommissionAgents\SalesCommissionAgentController;
 use App\Http\Controllers\SellingPriceGroups\SellingPriceGroupController;
+use App\Http\Controllers\Settings\BarcodeSettingsController;
 use App\Http\Controllers\Settings\ReceiptPrinterController;
 use App\Http\Controllers\Suppliers\SupplierController;
 use App\Http\Controllers\Taxes\TaxesController;
@@ -122,6 +123,9 @@ Route::prefix('{current_team}')
 
         Route::get('receipt-printer', [ReceiptPrinterController::class, 'edit'])->name('receipt-printer.edit');
         Route::patch('receipt-printer', [ReceiptPrinterController::class, 'update'])->name('receipt-printer.update');
+
+        Route::get('barcode-settings', [BarcodeSettingsController::class, 'edit'])->name('barcode-settings.edit');
+        Route::patch('barcode-settings', [BarcodeSettingsController::class, 'update'])->name('barcode-settings.update');
 
         Route::resource('tax-rates', TaxRateController::class)->only(['store', 'update', 'destroy']);
 
