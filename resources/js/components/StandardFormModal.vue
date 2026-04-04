@@ -17,11 +17,19 @@ const props = withDefaults(
         title: string;
         description?: string;
         size?: 'md' | 'lg' | 'xl' | '2xl' | 'full';
-        /** Navigated to when the dialog closes via overlay or the X control. */
-        dismissHref: string;
+        /**
+         * Navigated to when the dialog closes via overlay or the X control.
+         * Ignored when `visitOnDismiss` is false.
+         */
+        dismissHref?: string;
+        /**
+         * When false, closing the modal does not run Inertia navigation (e.g. quick-add on another page).
+         */
+        visitOnDismiss?: boolean;
     }>(),
     {
         size: 'lg',
+        visitOnDismiss: true,
     },
 );
 
@@ -38,7 +46,12 @@ const sizeClass = computed(() => {
 });
 
 watch(open, (next, prev) => {
-    if (next === false && prev === true) {
+    if (
+        next === false &&
+        prev === true &&
+        props.visitOnDismiss &&
+        props.dismissHref
+    ) {
         router.visit(props.dismissHref, { preserveScroll: true });
     }
 });
