@@ -162,6 +162,30 @@ class Team extends Model
     }
 
     /**
+     * @return HasMany<SalesCommissionAgent, $this>
+     */
+    public function salesCommissionAgents(): HasMany
+    {
+        return $this->hasMany(SalesCommissionAgent::class);
+    }
+
+    /**
+     * @return HasMany<TaxRate, $this>
+     */
+    public function taxRates(): HasMany
+    {
+        return $this->hasMany(TaxRate::class);
+    }
+
+    /**
+     * @return HasMany<TaxGroup, $this>
+     */
+    public function taxGroups(): HasMany
+    {
+        return $this->hasMany(TaxGroup::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

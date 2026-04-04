@@ -9,12 +9,15 @@ import {
     Contact,
     FolderTree,
     GitBranch,
+    Landmark,
     Home,
     LayoutList,
     Package,
+    Percent,
     Printer as PrinterIcon,
     Receipt,
     Ruler,
+    Settings,
     Shield,
     ShoppingCart,
     SlidersHorizontal,
@@ -52,8 +55,10 @@ import customerGroups from '@/routes/customer-groups';
 import customers from '@/routes/customers';
 import productCategories from '@/routes/product-categories';
 import products from '@/routes/products';
+import salesCommissionAgentRoutes from '@/routes/sales-commission-agents';
 import sellingPriceGroups from '@/routes/selling-price-groups';
 import suppliers from '@/routes/suppliers';
+import taxesPageRoutes from '@/routes/taxes';
 import units from '@/routes/units';
 import variationTemplates from '@/routes/variation-templates';
 import warranties from '@/routes/warranties';
@@ -137,7 +142,21 @@ const productsPrintLabelsUrl = computed(() =>
         : '/',
 );
 
+const salesCommissionAgentsUrl = computed(() =>
+    page.props.currentTeam
+        ? salesCommissionAgentRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const taxesUrl = computed(() =>
+    page.props.currentTeam
+        ? taxesPageRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
 const contactsOpen = ref(false);
+const userManagementOpen = ref(false);
+const settingsOpen = ref(false);
 const productsOpen = ref(false);
 
 watch(
@@ -186,8 +205,23 @@ watch(
     { immediate: true },
 );
 
+watch(
+    () => [page.url, salesCommissionAgentsUrl.value] as const,
+    () => {
+        userManagementOpen.value = isCurrentUrl(salesCommissionAgentsUrl.value);
+    },
+    { immediate: true },
+);
+
+watch(
+    () => [page.url, taxesUrl.value] as const,
+    () => {
+        settingsOpen.value = isCurrentUrl(taxesUrl.value);
+    },
+    { immediate: true },
+);
+
 const collapsibleNav = [
-    { title: 'User Management', icon: Users },
     { title: 'Purchases', icon: ShoppingCart },
     { title: 'Sell', icon: Store },
     { title: 'Stock Transfers', icon: Truck },
@@ -454,6 +488,83 @@ const collapsibleNav = [
                                             <Link :href="unitsUrl">
                                                 <Ruler />
                                                 <span>Units</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                </SidebarMenuSub>
+                            </CollapsibleContent>
+                        </SidebarMenuItem>
+                    </Collapsible>
+
+                    <Collapsible
+                        v-model:open="userManagementOpen"
+                        class="group/collapsible"
+                    >
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger as-child>
+                                <SidebarMenuButton
+                                    :is-active="
+                                        isCurrentUrl(salesCommissionAgentsUrl)
+                                    "
+                                    tooltip="User management"
+                                >
+                                    <Users />
+                                    <span>User Management</span>
+                                    <ChevronRight
+                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                    />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <SidebarMenuSub>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    salesCommissionAgentsUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link :href="salesCommissionAgentsUrl">
+                                                <Percent />
+                                                <span
+                                                    >Sales commission agents</span
+                                                >
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                </SidebarMenuSub>
+                            </CollapsibleContent>
+                        </SidebarMenuItem>
+                    </Collapsible>
+
+                    <Collapsible v-model:open="settingsOpen" class="group/collapsible">
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger as-child>
+                                <SidebarMenuButton
+                                    :is-active="isCurrentUrl(taxesUrl)"
+                                    tooltip="Settings"
+                                >
+                                    <Settings />
+                                    <span>Settings</span>
+                                    <ChevronRight
+                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                    />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <SidebarMenuSub>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="isCurrentUrl(taxesUrl)"
+                                        >
+                                            <Link :href="taxesUrl">
+                                                <Landmark />
+                                                <span>Taxes</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>

@@ -7,6 +7,7 @@ import {
     usePage,
 } from '@inertiajs/vue3';
 import { useDebounceFn, useStorage } from '@vueuse/core';
+import { Pencil, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import StandardDataTable from '@/components/StandardDataTable.vue';
 import StandardFormModal from '@/components/StandardFormModal.vue';
@@ -264,17 +265,15 @@ function submitEdit() {
         );
 }
 
-function destroySupplier() {
-    const s = props.editingSupplier;
-
-    if (!s || !confirm('Delete this supplier? This cannot be undone.')) {
+function destroySupplier(row: SupplierRow) {
+    if (!confirm('Delete this supplier? This cannot be undone.')) {
         return;
     }
 
     router.delete(
         supplierRoutes.destroy.url({
             current_team: teamSlug.value,
-            supplier: s.id,
+            supplier: row.id,
         }),
     );
 }
@@ -477,13 +476,32 @@ function sortIndicator(sortKey: string): string {
                                 {{ displayCell(row, col.id) }}
                             </td>
                             <td class="px-3 py-2 text-right print:hidden">
-                                <button
-                                    type="button"
-                                    class="text-primary text-sm font-medium hover:underline"
-                                    @click="openEditModal(row)"
+                                <div
+                                    class="flex flex-wrap items-center justify-end gap-0.5"
                                 >
-                                    Edit
-                                </button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        class="text-primary hover:text-primary"
+                                        aria-label="Edit"
+                                        title="Edit"
+                                        @click="openEditModal(row)"
+                                    >
+                                        <Pencil />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        class="text-destructive hover:text-destructive"
+                                        aria-label="Delete"
+                                        title="Delete"
+                                        @click="destroySupplier(row)"
+                                    >
+                                        <Trash2 />
+                                    </Button>
+                                </div>
                             </td>
                         </tr>
                         <tr v-if="!(suppliers?.data?.length)">
@@ -559,31 +577,22 @@ function sortIndicator(sortKey: string): string {
                 />
             </Form>
             <template #footer>
-                <div class="flex w-full flex-wrap items-center justify-between gap-2">
+                <div class="flex w-full flex-wrap justify-end gap-2">
                     <Button
                         type="button"
-                        variant="destructive"
-                        @click="destroySupplier"
+                        variant="outline"
+                        @click="router.visit(indexDismissHref)"
                     >
-                        Delete
+                        Cancel
                     </Button>
-                    <div class="flex flex-wrap gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            @click="router.visit(indexDismissHref)"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="button"
-                            :disabled="editForm.processing"
-                            @click="submitEdit"
-                        >
-                            <Spinner v-if="editForm.processing" />
-                            Update
-                        </Button>
-                    </div>
+                    <Button
+                        type="button"
+                        :disabled="editForm.processing"
+                        @click="submitEdit"
+                    >
+                        <Spinner v-if="editForm.processing" />
+                        Update
+                    </Button>
                 </div>
             </template>
         </StandardFormModal>

@@ -7,6 +7,10 @@ use App\Http\Controllers\ProductCategories\ProductCategoryController;
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\SellingPriceGroups\SellingPriceGroupController;
 use App\Http\Controllers\Suppliers\SupplierController;
+use App\Http\Controllers\SalesCommissionAgents\SalesCommissionAgentController;
+use App\Http\Controllers\Taxes\TaxGroupController;
+use App\Http\Controllers\Taxes\TaxRateController;
+use App\Http\Controllers\Taxes\TaxesController;
 use App\Http\Controllers\Units\UnitController;
 use App\Http\Controllers\VariationTemplates\VariationTemplateController;
 use App\Http\Controllers\Warranties\WarrantyController;
@@ -103,6 +107,21 @@ Route::prefix('{current_team}')
 
         Route::post('units/quick-store', [UnitController::class, 'quickStore'])
             ->name('units.quick-store');
+
+        Route::get('sales-commission-agents/export/{format}', [SalesCommissionAgentController::class, 'exportFile'])
+            ->name('sales-commission-agents.export');
+
+        Route::resource('sales-commission-agents', SalesCommissionAgentController::class)->except([
+            'show',
+            'create',
+            'edit',
+        ]);
+
+        Route::get('taxes', [TaxesController::class, 'index'])->name('taxes.index');
+
+        Route::resource('tax-rates', TaxRateController::class)->only(['store', 'update', 'destroy']);
+
+        Route::resource('tax-groups', TaxGroupController::class)->only(['store', 'update', 'destroy']);
 
         Route::resource('selling-price-groups', SellingPriceGroupController::class)->except([
             'show',

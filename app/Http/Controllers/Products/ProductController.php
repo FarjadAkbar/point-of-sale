@@ -15,6 +15,7 @@ use App\Models\Team;
 use App\Models\Unit;
 use App\Models\VariationTemplate;
 use App\Services\ProductService;
+use App\Services\UnitService;
 use App\Support\ProductOptionLists;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +27,7 @@ class ProductController extends Controller
 {
     public function __construct(
         protected ProductService $productService,
+        protected UnitService $unitService,
     ) {}
 
     public function index(ProductIndexRequest $request, Team $current_team): Response
@@ -87,9 +89,14 @@ class ProductController extends Controller
             ->orderBy('name')
             ->get();
 
+        $baseUnits = $this->unitService
+            ->baseUnitOptionsQuery($current_team, null)
+            ->get(['id', 'name', 'short_name']);
+
         return Inertia::render('products/Create', [
             'units' => $units,
             'brands' => $brands,
+            'baseUnits' => $baseUnits,
             'categories' => $categories,
             'variationTemplates' => VariationTemplateResource::collection($variationTemplates)->resolve(),
             'barcodeTypes' => ProductOptionLists::barcodeTypes(),

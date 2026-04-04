@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { Form, Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import {
+    Form,
+    Head,
+    Link,
+    useForm,
+    usePage,
+} from '@inertiajs/vue3';
 import { ChevronDown, Plus, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
+import StandardFormModal from '@/components/StandardFormModal.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -31,6 +31,8 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { xsrfToken } from '@/lib/xsrf';
+import BrandForm from '@/pages/brands/BrandForm.vue';
+import UnitForm from '@/pages/units/UnitForm.vue';
 import brandRoutes from '@/routes/brands';
 import productRoutes from '@/routes/products';
 import unitRoutes from '@/routes/units';
@@ -86,9 +88,12 @@ type VarRow = {
 const page = usePage();
 const teamSlug = computed(() => (page.props.currentTeam as Team).slug);
 
+type BaseUnitOption = { id: number; name: string; short_name: string };
+
 const props = defineProps<{
     units: UnitRow[];
     brands: BrandRow[];
+    baseUnits: BaseUnitOption[];
     categories: Cat[];
     variationTemplates: VarTpl[];
     barcodeTypes: { value: string; label: string }[];
@@ -362,13 +367,62 @@ function buildVariationMatrix(): unknown[] {
 
 const brandOpen = ref(false);
 const unitOpen = ref(false);
-const quickBrandName = ref('');
-const quickUnitName = ref('');
-const quickUnitShort = ref('');
 const quickSaving = ref(false);
 
-async function saveQuickBrand() {
-    if (!quickBrandName.value.trim()) {
+const quickBrandCreateForm = useForm({
+    name: '',
+    description: '',
+    user_for_repair: false,
+});
+
+const quickUnitCreateForm = useForm({
+    name: '',
+    short_name: '',
+    allow_decimal: false,
+    is_multiple_of_base: false,
+    base_unit_multiplier: '',
+    base_unit_id: '',
+});
+
+function openQuickBrandModal() {
+    quickBrandCreateForm.reset();
+    quickBrandCreateForm.clearErrors();
+    brandOpen.value = true;
+}
+
+function openQuickUnitModal() {
+    quickUnitCreateForm.reset();
+    quickUnitCreateForm.clearErrors();
+    unitOpen.value = true;
+}
+
+function transformQuickUnitPayload(data: {
+    name: string;
+    short_name: string;
+    allow_decimal: boolean;
+    is_multiple_of_base: boolean;
+    base_unit_multiplier: string;
+    base_unit_id: string;
+}) {
+    return {
+        name: data.name,
+        short_name: data.short_name,
+        allow_decimal: data.allow_decimal === true,
+        is_multiple_of_base: data.is_multiple_of_base === true,
+        base_unit_multiplier:
+            data.is_multiple_of_base === true &&
+            data.base_unit_multiplier !== ''
+                ? data.base_unit_multiplier
+                : null,
+        base_unit_id:
+            data.is_multiple_of_base === true && data.base_unit_id !== ''
+                ? Number(data.base_unit_id)
+                : null,
+    };
+}
+
+async function submitQuickBrand() {
+    if (!quickBrandCreateForm.name.trim()) {
         return;
     }
 
@@ -384,30 +438,41 @@ async function saveQuickBrand() {
                 'X-XSRF-TOKEN': xsrfToken(),
             },
             body: JSON.stringify({
-                name: quickBrandName.value.trim(),
-                description: null,
-                user_for_repair: false,
+                name: quickBrandCreateForm.name.trim(),
+                description:
+                    quickBrandCreateForm.description?.trim() || null,
+                user_for_repair:
+                    quickBrandCreateForm.user_for_repair === true,
             }),
         });
-        const b = (await r.json()) as { id: number; name: string };
+        const b = (await r.json()) as {
+            id: number;
+            name: string;
+            description: string | null;
+            user_for_repair: boolean;
+            created_at: string | null;
+        };
         const row: BrandRow = {
             id: b.id,
             name: b.name,
-            description: null,
-            user_for_repair: false,
-            created_at: null,
+            description: b.description,
+            user_for_repair: b.user_for_repair,
+            created_at: b.created_at,
         };
         extraBrands.value = [...extraBrands.value, row];
         form.brand_id = String(b.id);
-        quickBrandName.value = '';
         brandOpen.value = false;
+        quickBrandCreateForm.reset();
     } finally {
         quickSaving.value = false;
     }
 }
 
-async function saveQuickUnit() {
-    if (!quickUnitName.value.trim() || !quickUnitShort.value.trim()) {
+async function submitQuickUnit() {
+    if (
+        !quickUnitCreateForm.name.trim() ||
+        !quickUnitCreateForm.short_name.trim()
+    ) {
         return;
     }
 
@@ -422,36 +487,41 @@ async function saveQuickUnit() {
                 Accept: 'application/json',
                 'X-XSRF-TOKEN': xsrfToken(),
             },
-            body: JSON.stringify({
-                name: quickUnitName.value.trim(),
-                short_name: quickUnitShort.value.trim(),
-                allow_decimal: false,
-                is_multiple_of_base: false,
-            }),
+            body: JSON.stringify(
+                transformQuickUnitPayload({
+                    name: quickUnitCreateForm.name,
+                    short_name: quickUnitCreateForm.short_name,
+                    allow_decimal: quickUnitCreateForm.allow_decimal,
+                    is_multiple_of_base:
+                        quickUnitCreateForm.is_multiple_of_base,
+                    base_unit_multiplier:
+                        quickUnitCreateForm.base_unit_multiplier,
+                    base_unit_id: quickUnitCreateForm.base_unit_id,
+                }),
+            ),
         });
         const u = (await r.json()) as {
             id: number;
             name: string;
             short_name: string;
-            allow_decimal?: boolean;
-            is_multiple_of_base?: boolean;
-            base_unit_multiplier?: string | null;
-            created_at?: string | null;
+            allow_decimal: boolean;
+            is_multiple_of_base: boolean;
+            base_unit_multiplier: string | null;
+            created_at: string | null;
         };
         const row: UnitRow = {
             id: u.id,
             name: u.name,
             short_name: u.short_name,
-            allow_decimal: u.allow_decimal ?? false,
-            is_multiple_of_base: u.is_multiple_of_base ?? false,
-            base_unit_multiplier: u.base_unit_multiplier ?? null,
-            created_at: u.created_at ?? null,
+            allow_decimal: u.allow_decimal,
+            is_multiple_of_base: u.is_multiple_of_base,
+            base_unit_multiplier: u.base_unit_multiplier,
+            created_at: u.created_at,
         };
         extraUnits.value = [...extraUnits.value, row];
         form.unit_id = String(u.id);
-        quickUnitName.value = '';
-        quickUnitShort.value = '';
         unitOpen.value = false;
+        quickUnitCreateForm.reset();
     } finally {
         quickSaving.value = false;
     }
@@ -572,7 +642,7 @@ function submit() {
                             type="button"
                             variant="outline"
                             class="shrink-0"
-                            @click="unitOpen = true"
+                            @click="openQuickUnitModal"
                         >
                             <Plus class="size-4" />
                         </Button>
@@ -601,7 +671,7 @@ function submit() {
                             type="button"
                             variant="outline"
                             class="shrink-0"
-                            @click="brandOpen = true"
+                            @click="openQuickBrandModal"
                         >
                             <Plus class="size-4" />
                         </Button>
@@ -1067,50 +1137,69 @@ function submit() {
             </div>
         </Form>
 
-        <Dialog v-model:open="brandOpen">
-            <DialogContent class="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>New brand</DialogTitle>
-                </DialogHeader>
-                <div class="grid gap-2 py-2">
-                    <Label for="qb-name">Name</Label>
-                    <Input id="qb-name" v-model="quickBrandName" />
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" @click="brandOpen = false">
+        <StandardFormModal
+            v-model:open="brandOpen"
+            title="Add brand"
+            description="Name, description, and repair flag."
+            size="lg"
+            :visit-on-dismiss="false"
+        >
+            <Form class="contents" @submit.prevent="submitQuickBrand">
+                <BrandForm :form="quickBrandCreateForm" />
+            </Form>
+            <template #footer>
+                <div class="flex w-full flex-wrap justify-end gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        @click="brandOpen = false"
+                    >
                         Cancel
                     </Button>
-                    <Button :disabled="quickSaving" @click="saveQuickBrand">
+                    <Button
+                        type="button"
+                        :disabled="quickSaving"
+                        @click="submitQuickBrand"
+                    >
+                        <Spinner v-if="quickSaving" />
                         Save
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </div>
+            </template>
+        </StandardFormModal>
 
-        <Dialog v-model:open="unitOpen">
-            <DialogContent class="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>New unit</DialogTitle>
-                </DialogHeader>
-                <div class="grid gap-3 py-2">
-                    <div class="grid gap-2">
-                        <Label for="qu-name">Name</Label>
-                        <Input id="qu-name" v-model="quickUnitName" />
-                    </div>
-                    <div class="grid gap-2">
-                        <Label for="qu-short">Short name</Label>
-                        <Input id="qu-short" v-model="quickUnitShort" />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" @click="unitOpen = false">
+        <StandardFormModal
+            v-model:open="unitOpen"
+            title="Add unit"
+            description="Names, decimals, and optional conversion to a base unit."
+            size="xl"
+            :visit-on-dismiss="false"
+        >
+            <Form class="contents" @submit.prevent="submitQuickUnit">
+                <UnitForm
+                    :form="quickUnitCreateForm"
+                    :base-units="props.baseUnits"
+                />
+            </Form>
+            <template #footer>
+                <div class="flex w-full flex-wrap justify-end gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        @click="unitOpen = false"
+                    >
                         Cancel
                     </Button>
-                    <Button :disabled="quickSaving" @click="saveQuickUnit">
+                    <Button
+                        type="button"
+                        :disabled="quickSaving"
+                        @click="submitQuickUnit"
+                    >
+                        <Spinner v-if="quickSaving" />
                         Save
                     </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </div>
+            </template>
+        </StandardFormModal>
     </div>
 </template>
