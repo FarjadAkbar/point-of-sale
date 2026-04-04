@@ -55,6 +55,7 @@ import customerGroups from '@/routes/customer-groups';
 import customers from '@/routes/customers';
 import productCategories from '@/routes/product-categories';
 import products from '@/routes/products';
+import receiptPrinterRoutes from '@/routes/receipt-printer';
 import salesCommissionAgentRoutes from '@/routes/sales-commission-agents';
 import sellingPriceGroups from '@/routes/selling-price-groups';
 import suppliers from '@/routes/suppliers';
@@ -154,6 +155,12 @@ const taxesUrl = computed(() =>
         : '/',
 );
 
+const receiptPrinterUrl = computed(() =>
+    page.props.currentTeam
+        ? receiptPrinterRoutes.edit.url(page.props.currentTeam.slug)
+        : '/',
+);
+
 const contactsOpen = ref(false);
 const userManagementOpen = ref(false);
 const settingsOpen = ref(false);
@@ -214,9 +221,11 @@ watch(
 );
 
 watch(
-    () => [page.url, taxesUrl.value] as const,
+    () => [page.url, taxesUrl.value, receiptPrinterUrl.value] as const,
     () => {
-        settingsOpen.value = isCurrentUrl(taxesUrl.value);
+        settingsOpen.value =
+            isCurrentUrl(taxesUrl.value) ||
+            isCurrentUrl(receiptPrinterUrl.value);
     },
     { immediate: true },
 );
@@ -544,7 +553,10 @@ const collapsibleNav = [
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
-                                    :is-active="isCurrentUrl(taxesUrl)"
+                                    :is-active="
+                                        isCurrentUrl(taxesUrl) ||
+                                        isCurrentUrl(receiptPrinterUrl)
+                                    "
                                     tooltip="Settings"
                                 >
                                     <Settings />
@@ -565,6 +577,20 @@ const collapsibleNav = [
                                             <Link :href="taxesUrl">
                                                 <Landmark />
                                                 <span>Taxes</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(receiptPrinterUrl)
+                                            "
+                                        >
+                                            <Link :href="receiptPrinterUrl">
+                                                <PrinterIcon />
+                                                <span>Receipt printer</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>

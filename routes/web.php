@@ -5,16 +5,17 @@ use App\Http\Controllers\CustomerGroups\CustomerGroupController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\ProductCategories\ProductCategoryController;
 use App\Http\Controllers\Products\ProductController;
-use App\Http\Controllers\SellingPriceGroups\SellingPriceGroupController;
-use App\Http\Controllers\Suppliers\SupplierController;
 use App\Http\Controllers\SalesCommissionAgents\SalesCommissionAgentController;
+use App\Http\Controllers\SellingPriceGroups\SellingPriceGroupController;
+use App\Http\Controllers\Settings\ReceiptPrinterController;
+use App\Http\Controllers\Suppliers\SupplierController;
+use App\Http\Controllers\Taxes\TaxesController;
 use App\Http\Controllers\Taxes\TaxGroupController;
 use App\Http\Controllers\Taxes\TaxRateController;
-use App\Http\Controllers\Taxes\TaxesController;
+use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Controllers\Units\UnitController;
 use App\Http\Controllers\VariationTemplates\VariationTemplateController;
 use App\Http\Controllers\Warranties\WarrantyController;
-use App\Http\Controllers\Teams\TeamInvitationController;
 use App\Http\Middleware\EnsureTeamMembership;
 use Illuminate\Support\Facades\Route;
 
@@ -118,6 +119,9 @@ Route::prefix('{current_team}')
         ]);
 
         Route::get('taxes', [TaxesController::class, 'index'])->name('taxes.index');
+
+        Route::get('receipt-printer', [ReceiptPrinterController::class, 'edit'])->name('receipt-printer.edit');
+        Route::patch('receipt-printer', [ReceiptPrinterController::class, 'update'])->name('receipt-printer.update');
 
         Route::resource('tax-rates', TaxRateController::class)->only(['store', 'update', 'destroy']);
 
