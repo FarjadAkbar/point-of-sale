@@ -8,6 +8,7 @@ use App\Http\Requests\Products\StoreProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\VariationTemplateResource;
 use App\Models\Brand;
+use App\Models\BusinessLocation;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SellingPriceGroup;
@@ -101,7 +102,10 @@ class ProductController extends Controller
             'variationTemplates' => VariationTemplateResource::collection($variationTemplates)->resolve(),
             'barcodeTypes' => ProductOptionLists::barcodeTypes(),
             'taxOptions' => ProductOptionLists::taxOptions(),
-            'businessLocations' => ProductOptionLists::businessLocations(),
+            'businessLocations' => BusinessLocation::query()
+                ->forTeam($current_team)
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -112,6 +116,7 @@ class ProductController extends Controller
             $request->productPayload(),
             $request->file('product_image'),
             $request->file('product_brochure'),
+            $request->openingStocks(),
         );
 
         return to_route('products.index', ['current_team' => $current_team])
@@ -125,15 +130,38 @@ class ProductController extends Controller
             return response()->json(['data' => []]);
         }
 
-        $rows = $this->productService->searchQuery($current_team, $q)->get(['id', 'name', 'sku']);
+        $sellableOnly = filter_var($request->query('active_only', false), FILTER_VALIDATE_BOOLEAN);
+        $locationRaw = $request->query('business_location_id');
+        $businessLocationId = is_numeric($locationRaw) ? (int) $locationRaw : null;
+
+        if ($businessLocationId !== null) {
+            $exists = BusinessLocation::query()
+                ->forTeam($current_team)
+                ->whereKey($businessLocationId)
+                ->exists();
+            if (! $exists) {
+                return response()->json(['data' => []]);
+            }
+        }
+
+        $rows = $this->productService
+            ->searchQuery($current_team, $q, $sellableOnly, $businessLocationId)
+            ->get(['id', 'name', 'sku', 'product_type', 'single_dsp', 'combo_selling_price']);
 
         return response()->json([
-            'data' => $rows->map(fn (Product $p) => [
-                'id' => $p->id,
-                'name' => $p->name,
-                'sku' => $p->sku,
-                'text' => $p->name.($p->sku ? ' ('.$p->sku.')' : ''),
-            ]),
+            'data' => $rows->map(function (Product $p) {
+                $defaultPrice = $p->product_type === 'combo'
+                    ? ($p->combo_selling_price ?? null)
+                    : ($p->single_dsp ?? null);
+
+                return [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'sku' => $p->sku,
+                    'text' => $p->name.($p->sku ? ' ('.$p->sku.')' : ''),
+                    'default_unit_price' => $defaultPrice !== null ? (string) $defaultPrice : '0',
+                ];
+            }),
         ]);
     }
 

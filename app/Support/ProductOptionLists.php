@@ -29,16 +29,4 @@ class ProductOptionLists
             ['id' => 'reduced_10', 'label' => 'Reduced 10%', 'rate' => 10.0],
         ];
     }
-
-    /**
-     * @return list<array{id: string, name: string}>
-     */
-    public static function businessLocations(): array
-    {
-        return [
-            ['id' => 'main', 'name' => 'Main warehouse'],
-            ['id' => 'store_downtown', 'name' => 'Store — Downtown'],
-            ['id' => 'store_mall', 'name' => 'Store — Mall'],
-        ];
-    }
 }

@@ -12,6 +12,7 @@ use App\Models\Customer;
 use App\Models\Team;
 use App\Services\CustomerService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -69,6 +70,25 @@ class CustomerController extends Controller
 
         return to_route('customers.index', ['current_team' => $current_team])
             ->with('success', 'Customer created.');
+    }
+
+    public function quickStore(StoreCustomerRequest $request, Team $current_team): JsonResponse
+    {
+        $customer = $this->customerService->create($current_team, $request->validated());
+
+        return response()->json([
+            'customer' => [
+                'id' => $customer->id,
+                'display_name' => $customer->display_name,
+                'address_line_1' => $customer->address_line_1,
+                'address_line_2' => $customer->address_line_2,
+                'city' => $customer->city,
+                'state' => $customer->state,
+                'zip_code' => $customer->zip_code,
+                'country' => $customer->country,
+                'shipping_address' => $customer->shipping_address,
+            ],
+        ], 201);
     }
 
     public function update(UpdateCustomerRequest $request, Team $current_team, Customer $customer): RedirectResponse

@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Products;
 
 use App\Models\Team;
+use App\Support\ProductOptionLists;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreProductRequest extends FormRequest
 {
@@ -23,7 +25,7 @@ class StoreProductRequest extends FormRequest
             $this->merge(['barcode_type' => null]);
         }
 
-        foreach (['combo_lines', 'variation_matrix', 'business_location_ids'] as $key) {
+        foreach (['combo_lines', 'variation_matrix', 'business_location_ids', 'opening_stocks'] as $key) {
             $v = $this->input($key);
             if (is_string($v) && $v !== '') {
                 $decoded = json_decode($v, true);
@@ -40,6 +42,44 @@ class StoreProductRequest extends FormRequest
         ]);
     }
 
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v) {
+            $opening = $this->input('opening_stocks');
+            if (is_array($opening) && count($opening) > 0 && ! $this->boolean('manage_stock')) {
+                $v->errors()->add('opening_stocks', 'Opening stock is only allowed when stock management is enabled.');
+            }
+
+            if (! $this->boolean('manage_stock')) {
+                return;
+            }
+
+            $allowed = collect($this->input('business_location_ids', []))
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if (! is_array($opening)) {
+                return;
+            }
+
+            foreach ($opening as $i => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $locId = (int) ($row['business_location_id'] ?? 0);
+                if ($locId === 0) {
+                    continue;
+                }
+                if (! in_array($locId, $allowed, true)) {
+                    $v->errors()->add(
+                        "opening_stocks.$i.business_location_id",
+                        'Each opening stock location must be one of the selected business locations.',
+                    );
+                }
+            }
+        });
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -48,8 +88,8 @@ class StoreProductRequest extends FormRequest
         /** @var Team $team */
         $team = $this->route('current_team');
 
-        $taxIds = collect(\App\Support\ProductOptionLists::taxOptions())->pluck('id')->all();
-        $barcodeValues = collect(\App\Support\ProductOptionLists::barcodeTypes())->pluck('value')->all();
+        $taxIds = collect(ProductOptionLists::taxOptions())->pluck('id')->all();
+        $barcodeValues = collect(ProductOptionLists::barcodeTypes())->pluck('value')->all();
 
         return [
             'name' => ['required', 'string', 'max:255'],
@@ -65,7 +105,17 @@ class StoreProductRequest extends FormRequest
             'category_id' => ['nullable', 'integer', Rule::exists('product_categories', 'id')->where('team_id', $team->id)],
             'subcategory_id' => ['nullable', 'integer', Rule::exists('product_categories', 'id')->where('team_id', $team->id)],
             'business_location_ids' => ['nullable', 'array'],
-            'business_location_ids.*' => ['string', 'max:64'],
+            'business_location_ids.*' => [
+                'integer',
+                Rule::exists('business_locations', 'id')->where('team_id', $team->id),
+            ],
+            'opening_stocks' => ['nullable', 'array'],
+            'opening_stocks.*.business_location_id' => [
+                'required',
+                'integer',
+                Rule::exists('business_locations', 'id')->where('team_id', $team->id),
+            ],
+            'opening_stocks.*.quantity' => ['required', 'numeric', 'min:0'],
             'manage_stock' => ['boolean'],
             'alert_quantity' => [
                 Rule::requiredIf(fn () => $this->boolean('manage_stock')),
@@ -114,7 +164,7 @@ class StoreProductRequest extends FormRequest
     {
         /** @var array<string, mixed> $data */
         $data = collect($this->validated())
-            ->except(['product_image', 'product_brochure'])
+            ->except(['product_image', 'product_brochure', 'opening_stocks'])
             ->all();
 
         if (($data['product_type'] ?? '') !== 'single') {
@@ -142,5 +192,20 @@ class StoreProductRequest extends FormRequest
         }
 
         return $data;
+    }
+
+    /**
+     * @return list<array{business_location_id: int, quantity: float|int|string}>
+     */
+    public function openingStocks(): array
+    {
+        if (! $this->boolean('manage_stock')) {
+            return [];
+        }
+
+        /** @var mixed $rows */
+        $rows = data_get($this->validated(), 'opening_stocks', []);
+
+        return is_array($rows) ? $rows : [];
     }
 }

@@ -29,6 +29,8 @@ type Row = {
     sku: string | null;
     product_type: string;
     not_for_selling: boolean;
+    manage_stock: boolean;
+    stock_total: string | null;
     single_dsp: string | null;
     combo_selling_price: string | null;
     unit: { id: number; name: string; short_name: string } | null;
@@ -81,6 +83,7 @@ type ColId =
     | 'name'
     | 'sku'
     | 'product_type'
+    | 'stock'
     | 'price'
     | 'unit'
     | 'brand'
@@ -90,6 +93,7 @@ const allColumns: { id: ColId; label: string; sortKey: string | null }[] = [
     { id: 'name', label: 'Name', sortKey: 'name' },
     { id: 'sku', label: 'SKU', sortKey: 'sku' },
     { id: 'product_type', label: 'Type', sortKey: 'product_type' },
+    { id: 'stock', label: 'Stock', sortKey: null },
     { id: 'price', label: 'Selling price', sortKey: null },
     { id: 'unit', label: 'Unit', sortKey: null },
     { id: 'brand', label: 'Brand', sortKey: null },
@@ -182,6 +186,8 @@ function displayCell(row: Row, col: ColId): string {
             return row.sku ?? '—';
         case 'product_type':
             return row.product_type;
+        case 'stock':
+            return row.manage_stock ? (row.stock_total ?? '0') : '—';
         case 'price':
             return displayPrice(row);
         case 'unit':

@@ -12,6 +12,7 @@ use App\Models\Supplier;
 use App\Models\Team;
 use App\Services\SupplierService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -65,6 +66,24 @@ class SupplierController extends Controller
 
         return to_route('suppliers.index', ['current_team' => $current_team])
             ->with('success', 'Supplier created.');
+    }
+
+    public function quickStore(StoreSupplierRequest $request, Team $current_team): JsonResponse
+    {
+        $supplier = $this->supplierService->create($current_team, $request->validated());
+
+        return response()->json([
+            'supplier' => [
+                'id' => $supplier->id,
+                'display_name' => $supplier->display_name,
+                'address_line_1' => $supplier->address_line_1,
+                'address_line_2' => $supplier->address_line_2,
+                'city' => $supplier->city,
+                'state' => $supplier->state,
+                'zip_code' => $supplier->zip_code,
+                'country' => $supplier->country,
+            ],
+        ], 201);
     }
 
     public function update(UpdateSupplierRequest $request, Team $current_team, Supplier $supplier): RedirectResponse

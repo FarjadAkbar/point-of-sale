@@ -1,13 +1,19 @@
 <?php
 
 use App\Http\Controllers\Brands\BrandController;
+use App\Http\Controllers\BusinessLocations\BusinessLocationController;
 use App\Http\Controllers\CustomerGroups\CustomerGroupController;
 use App\Http\Controllers\Customers\CustomerController;
+use App\Http\Controllers\PaymentAccounts\PaymentAccountController;
 use App\Http\Controllers\ProductCategories\ProductCategoryController;
 use App\Http\Controllers\Products\ProductController;
+use App\Http\Controllers\Purchases\PurchaseController;
+use App\Http\Controllers\Purchases\PurchaseReturnController;
+use App\Http\Controllers\Sales\SaleController;
 use App\Http\Controllers\SalesCommissionAgents\SalesCommissionAgentController;
 use App\Http\Controllers\SellingPriceGroups\SellingPriceGroupController;
 use App\Http\Controllers\Settings\BarcodeSettingsController;
+use App\Http\Controllers\Settings\PaymentSettingsController;
 use App\Http\Controllers\Settings\ReceiptPrinterController;
 use App\Http\Controllers\Suppliers\SupplierController;
 use App\Http\Controllers\Taxes\TaxesController;
@@ -50,6 +56,9 @@ Route::prefix('{current_team}')
             'edit',
         ]);
 
+        Route::post('suppliers/quick-store', [SupplierController::class, 'quickStore'])
+            ->name('suppliers.quick-store');
+
         Route::get('customers/export/{format}', [CustomerController::class, 'exportFile'])
             ->name('customers.export');
 
@@ -58,6 +67,9 @@ Route::prefix('{current_team}')
             'create',
             'edit',
         ]);
+
+        Route::post('customers/quick-store', [CustomerController::class, 'quickStore'])
+            ->name('customers.quick-store');
 
         Route::get('customer-groups/export/{format}', [CustomerGroupController::class, 'exportFile'])
             ->name('customer-groups.export');
@@ -126,6 +138,31 @@ Route::prefix('{current_team}')
 
         Route::get('barcode-settings', [BarcodeSettingsController::class, 'edit'])->name('barcode-settings.edit');
         Route::patch('barcode-settings', [BarcodeSettingsController::class, 'update'])->name('barcode-settings.update');
+
+        Route::get('payment-settings', [PaymentSettingsController::class, 'edit'])->name('payment-settings.edit');
+        Route::patch('payment-settings', [PaymentSettingsController::class, 'update'])->name('payment-settings.update');
+
+        Route::resource('payment-accounts', PaymentAccountController::class)->only([
+            'store',
+            'update',
+            'destroy',
+        ]);
+
+        Route::get('purchases', [PurchaseController::class, 'index'])->name('purchases.index');
+        Route::get('purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
+        Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store');
+
+        Route::get('purchase-returns', [PurchaseReturnController::class, 'index'])->name('purchase-returns.index');
+
+        Route::get('sales', [SaleController::class, 'index'])->name('sales.index');
+        Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create');
+        Route::post('sales', [SaleController::class, 'store'])->name('sales.store');
+
+        Route::resource('business-locations', BusinessLocationController::class)->except([
+            'show',
+            'create',
+            'edit',
+        ]);
 
         Route::resource('tax-rates', TaxRateController::class)->only(['store', 'update', 'destroy']);
 

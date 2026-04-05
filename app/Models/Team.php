@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['name', 'slug', 'is_personal', 'receipt_printer_settings', 'barcode_settings'])]
+#[Fillable(['name', 'slug', 'is_personal', 'receipt_printer_settings', 'barcode_settings', 'payment_settings'])]
 class Team extends Model
 {
     /** @use HasFactory<TeamFactory> */
@@ -162,6 +162,55 @@ class Team extends Model
     }
 
     /**
+     * @return HasMany<BusinessLocation, $this>
+     */
+    public function businessLocations(): HasMany
+    {
+        return $this->hasMany(BusinessLocation::class);
+    }
+
+    /**
+     * @return HasMany<PaymentAccount, $this>
+     */
+    public function paymentAccounts(): HasMany
+    {
+        return $this->hasMany(PaymentAccount::class);
+    }
+
+    /**
+     * @return HasMany<Purchase, $this>
+     */
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(Purchase::class);
+    }
+
+    /**
+     * @return HasMany<Sale, $this>
+     */
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
+    }
+
+    /**
+     * @return array{cash_enabled: bool, bank_transfer_enabled: bool}
+     */
+    public function resolvedPaymentSettings(): array
+    {
+        $raw = $this->payment_settings ?? [];
+
+        return [
+            'cash_enabled' => array_key_exists('cash_enabled', $raw)
+                ? (bool) $raw['cash_enabled']
+                : true,
+            'bank_transfer_enabled' => array_key_exists('bank_transfer_enabled', $raw)
+                ? (bool) $raw['bank_transfer_enabled']
+                : true,
+        ];
+    }
+
+    /**
      * @return HasMany<SalesCommissionAgent, $this>
      */
     public function salesCommissionAgents(): HasMany
@@ -196,6 +245,7 @@ class Team extends Model
             'is_personal' => 'boolean',
             'receipt_printer_settings' => 'array',
             'barcode_settings' => 'array',
+            'payment_settings' => 'array',
         ];
     }
 

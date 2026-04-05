@@ -105,6 +105,14 @@ class Customer extends Model
             ->withTimestamps();
     }
 
+    /**
+     * @return HasMany<Sale, $this>
+     */
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
+    }
+
     public function getDisplayNameAttribute(): string
     {
         if ($this->entity_type === 'business' && filled($this->business_name)) {

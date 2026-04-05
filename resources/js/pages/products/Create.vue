@@ -7,7 +7,7 @@ import {
     usePage,
 } from '@inertiajs/vue3';
 import { ChevronDown, Plus, Trash2 } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import StandardFormModal from '@/components/StandardFormModal.vue';
 import { Button } from '@/components/ui/button';
@@ -98,7 +98,7 @@ const props = defineProps<{
     variationTemplates: VarTpl[];
     barcodeTypes: { value: string; label: string }[];
     taxOptions: { id: string; label: string; rate: number }[];
-    businessLocations: { id: string; name: string }[];
+    businessLocations: { id: number; name: string }[];
 }>();
 
 defineOptions({
@@ -146,15 +146,17 @@ watch(categoryId, () => {
     subcategoryId.value = NONE;
 });
 
-const selectedLocations = ref<string[]>(['main']);
+const selectedLocations = ref<string[]>([]);
 
-function toggleLocation(id: string, on: boolean) {
-    if (on && !selectedLocations.value.includes(id)) {
-        selectedLocations.value = [...selectedLocations.value, id];
+function toggleLocation(id: number, on: boolean) {
+    const key = String(id);
+
+    if (on && !selectedLocations.value.includes(key)) {
+        selectedLocations.value = [...selectedLocations.value, key];
     }
 
     if (!on) {
-        selectedLocations.value = selectedLocations.value.filter((x) => x !== id);
+        selectedLocations.value = selectedLocations.value.filter((x) => x !== key);
     }
 }
 
@@ -166,7 +168,7 @@ const locationsTriggerLabel = computed(() => {
     }
 
     const selected = locs.filter((l) =>
-        selectedLocations.value.includes(l.id),
+        selectedLocations.value.includes(String(l.id)),
     );
 
     if (selected.length === 0) {
@@ -183,6 +185,33 @@ const locationsTriggerLabel = computed(() => {
 
     return `${selected.length} locations selected`;
 });
+
+const selectedLocationRows = computed(() =>
+    props.businessLocations.filter((l) =>
+        selectedLocations.value.includes(String(l.id)),
+    ),
+);
+
+/** Opening quantity per location id (string keys); only used when manage stock is on. */
+const openingStockByLocationId = reactive<Record<string, string>>({});
+
+watch(
+    () => [...selectedLocations.value].sort().join(','),
+    () => {
+        const sel = new Set(selectedLocations.value);
+        for (const key of Object.keys(openingStockByLocationId)) {
+            if (!sel.has(key)) {
+                delete openingStockByLocationId[key];
+            }
+        }
+        for (const id of selectedLocations.value) {
+            if (!(id in openingStockByLocationId)) {
+                openingStockByLocationId[id] = '';
+            }
+        }
+    },
+    { immediate: true },
+);
 
 const form = useForm({
     name: '',
@@ -543,13 +572,32 @@ function submit() {
 
     form.transform((data) => {
         const out: Record<string, unknown> = { ...data };
-        out.business_location_ids = JSON.stringify(selectedLocations.value);
+        out.business_location_ids = JSON.stringify(
+            selectedLocations.value.map((id) => Number(id)),
+        );
         out.combo_lines = JSON.stringify(data.combo_lines ?? []);
 
         if (data.product_type === 'variation') {
             out.variation_matrix = JSON.stringify(buildVariationMatrix());
         } else {
             out.variation_matrix = JSON.stringify([]);
+        }
+
+        if (
+            data.manage_stock === true &&
+            selectedLocationRows.value.length > 0
+        ) {
+            out.opening_stocks = JSON.stringify(
+                selectedLocationRows.value.map((l) => ({
+                    business_location_id: l.id,
+                    quantity:
+                        Number(
+                            openingStockByLocationId[String(l.id)] ?? '',
+                        ) || 0,
+                })),
+            );
+        } else {
+            out.opening_stocks = JSON.stringify([]);
         }
 
         out.unit_id = data.unit_id === '' ? '' : data.unit_id;
@@ -738,7 +786,7 @@ function submit() {
                             v-for="loc in businessLocations"
                             :key="loc.id"
                             class="cursor-pointer"
-                            :model-value="selectedLocations.includes(loc.id)"
+                            :model-value="selectedLocations.includes(String(loc.id))"
                             @update:model-value="
                                 (v) => toggleLocation(loc.id, v === true)
                             "
@@ -771,6 +819,38 @@ function submit() {
                         v-model="form.alert_quantity"
                         inputmode="decimal"
                     />
+                </div>
+                <div
+                    v-if="form.manage_stock && selectedLocationRows.length"
+                    class="grid gap-3 md:col-span-2"
+                >
+                    <Label class="text-sm font-medium">
+                        Opening stock by location
+                    </Label>
+                    <p class="text-xs text-muted-foreground">
+                        Optional starting quantity for each selected location
+                        (zero is fine).
+                    </p>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div
+                            v-for="loc in selectedLocationRows"
+                            :key="loc.id"
+                            class="grid gap-1"
+                        >
+                            <Label
+                                class="text-xs font-normal text-muted-foreground"
+                                :for="`open-stock-${loc.id}`"
+                            >
+                                {{ loc.name }}
+                            </Label>
+                            <Input
+                                :id="`open-stock-${loc.id}`"
+                                v-model="openingStockByLocationId[String(loc.id)]"
+                                inputmode="decimal"
+                                placeholder="0"
+                            />
+                        </div>
+                    </div>
                 </div>
                 <div class="flex items-center gap-2">
                     <Checkbox

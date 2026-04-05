@@ -24,7 +24,7 @@ class ProductFactory extends Factory
             'brand_id' => null,
             'category_id' => null,
             'subcategory_id' => null,
-            'business_location_ids' => ['main'],
+            'business_location_ids' => null,
             'manage_stock' => false,
             'alert_quantity' => null,
             'description' => null,

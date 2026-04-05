@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'team_id',
@@ -103,8 +105,16 @@ class Product extends Model
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Builder<static>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @return HasMany<ProductStock, $this>
+     */
+    public function stocks(): HasMany
+    {
+        return $this->hasMany(ProductStock::class);
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeForTeam($query, Team $team)
     {
@@ -112,10 +122,21 @@ class Product extends Model
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Builder<static>  $query
+     * @param  Builder<static>  $query
      * @param  array<string, mixed>  $filters
+     * @return Builder<static>
+     */
+    /**
+     * Products assigned to the given business location (JSON array contains id).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<static>  $query
      * @return \Illuminate\Database\Eloquent\Builder<static>
      */
+    public function scopeForBusinessLocation($query, int $businessLocationId)
+    {
+        return $query->whereJsonContains('business_location_ids', $businessLocationId);
+    }
+
     public function scopeFilter($query, array $filters)
     {
         if (! empty($filters['search'])) {

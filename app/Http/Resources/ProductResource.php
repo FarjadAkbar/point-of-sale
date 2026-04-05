@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\Product
+ * @mixin Product
  */
 class ProductResource extends JsonResource
 {
@@ -22,6 +23,11 @@ class ProductResource extends JsonResource
             'product_type' => $this->product_type,
             'barcode_type' => $this->barcode_type,
             'not_for_selling' => (bool) $this->not_for_selling,
+            'manage_stock' => (bool) $this->manage_stock,
+            'alert_quantity' => $this->alert_quantity !== null ? (string) $this->alert_quantity : null,
+            'stock_total' => $this->manage_stock
+                ? (string) ($this->stocks_sum_quantity ?? 0)
+                : null,
             'single_dsp' => $this->single_dsp !== null ? (string) $this->single_dsp : null,
             'combo_selling_price' => $this->combo_selling_price !== null ? (string) $this->combo_selling_price : null,
             'unit' => $this->whenLoaded('unit', fn () => $this->unit ? [
