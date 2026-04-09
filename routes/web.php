@@ -5,6 +5,7 @@ use App\Http\Controllers\BusinessLocations\BusinessLocationController;
 use App\Http\Controllers\CustomerGroups\CustomerGroupController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\PaymentAccounts\PaymentAccountController;
+use App\Http\Controllers\Pos\PosController;
 use App\Http\Controllers\ProductCategories\ProductCategoryController;
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\Purchases\PurchaseController;
@@ -153,6 +154,14 @@ Route::prefix('{current_team}')
         Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store');
 
         Route::get('purchase-returns', [PurchaseReturnController::class, 'index'])->name('purchase-returns.index');
+
+        Route::get('pos/list', [PosController::class, 'list'])->name('pos.list');
+        Route::post('pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
+        Route::get('pos', [PosController::class, 'index'])->name('pos.index');
+
+        Route::get('sales/drafts', [SaleController::class, 'draftsIndex'])->name('sales.drafts.index');
+        Route::get('sales/drafts/create', [SaleController::class, 'createDraft'])->name('sales.drafts.create');
+        Route::post('sales/drafts', [SaleController::class, 'storeDraft'])->name('sales.drafts.store');
 
         Route::get('sales', [SaleController::class, 'index'])->name('sales.index');
         Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create');

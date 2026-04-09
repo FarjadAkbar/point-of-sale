@@ -23,6 +23,7 @@ import {
 } from '@/pages/customers/customerFormState';
 import customerRoutes from '@/routes/customers';
 import productRoutes from '@/routes/products';
+import salesDraftRoutes from '@/routes/sales/drafts';
 import salesRoutes from '@/routes/sales';
 import type { Team } from '@/types';
 
@@ -48,36 +49,63 @@ type LineRow = {
     product_tax_percent: string;
 };
 
-const props = defineProps<{
-    customers: CustomerRow[];
-    businessLocations: { id: number; name: string }[];
-    taxRates: { id: number; name: string; amount: string }[];
-    paymentAccounts: {
-        id: number;
-        name: string;
-        payment_method: string;
-    }[];
-    paymentSettings: {
-        cash_enabled: boolean;
-        bank_transfer_enabled: boolean;
-    };
-    teamMembers: { id: number; name: string; email: string }[];
-    customerGroups: { id: number; name: string }[];
-}>();
+const props = withDefaults(
+    defineProps<{
+        customers: CustomerRow[];
+        businessLocations: { id: number; name: string }[];
+        taxRates: { id: number; name: string; amount: string }[];
+        paymentAccounts: {
+            id: number;
+            name: string;
+            payment_method: string;
+        }[];
+        paymentSettings: {
+            cash_enabled: boolean;
+            bank_transfer_enabled: boolean;
+        };
+        teamMembers: { id: number; name: string; email: string }[];
+        customerGroups: { id: number; name: string }[];
+        isDraftSale?: boolean;
+    }>(),
+    { isDraftSale: false },
+);
 
 defineOptions({
-    layout: (p: { currentTeam?: Team | null }) => ({
-        breadcrumbs: [
-            {
-                title: 'Sales',
-                href: salesRoutes.index.url(p.currentTeam!.slug),
-            },
-            {
-                title: 'Add sale',
-                href: salesRoutes.create.url(p.currentTeam!.slug),
-            },
-        ],
-    }),
+    layout: (p: { currentTeam?: Team | null; isDraftSale?: boolean }) => {
+        const slug = p.currentTeam!.slug;
+
+        if (p.isDraftSale) {
+            return {
+                breadcrumbs: [
+                    {
+                        title: 'All sales',
+                        href: salesRoutes.index.url(slug),
+                    },
+                    {
+                        title: 'List draft',
+                        href: salesDraftRoutes.index.url(slug),
+                    },
+                    {
+                        title: 'Add draft',
+                        href: salesDraftRoutes.create.url(slug),
+                    },
+                ],
+            };
+        }
+
+        return {
+            breadcrumbs: [
+                {
+                    title: 'Sales',
+                    href: salesRoutes.index.url(slug),
+                },
+                {
+                    title: 'Add sale',
+                    href: salesRoutes.create.url(slug),
+                },
+            ],
+        };
+    },
 });
 
 const page = usePage();
@@ -101,7 +129,7 @@ const form = useForm({
     customer_id: '',
     invoice_no: '',
     transaction_date: toLocalInput(),
-    status: 'final',
+    status: props.isDraftSale ? 'draft' : 'final',
     pay_term_number: '',
     pay_term_type: NONE,
     discount_type: 'none',
@@ -470,6 +498,7 @@ function submitSale() {
 
             return {
                 ...rest,
+                status: props.isDraftSale ? 'draft' : d.status,
                 customer_id: Number(d.customer_id),
                 business_location_id: Number(d.business_location_id),
                 invoice_no: d.invoice_no?.trim() || null,
@@ -489,27 +518,43 @@ function submitSale() {
                 document,
             };
         })
-        .post(salesRoutes.store.url(teamSlug.value), {
-            forceFormData: true,
-            preserveScroll: true,
-        });
+        .post(
+            props.isDraftSale
+                ? salesDraftRoutes.store.url(teamSlug.value)
+                : salesRoutes.store.url(teamSlug.value),
+            {
+                forceFormData: true,
+                preserveScroll: true,
+            },
+        );
 }
 </script>
 
 <template>
-    <Head title="Add sale" />
+    <Head :title="isDraftSale ? 'Add draft' : 'Add sale'" />
 
     <div class="mx-auto flex max-w-6xl flex-1 flex-col gap-6 p-4 md:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold tracking-tight">Add sale</h1>
+                <h1 class="text-2xl font-semibold tracking-tight">
+                    {{ isDraftSale ? 'Add draft' : 'Add sale' }}
+                </h1>
                 <p class="text-muted-foreground text-sm">
-                    Choose a location first; product search only lists items
-                    available there.
+                    {{
+                        isDraftSale
+                            ? 'Save as draft without finalizing. Products are optional until you finalize later.'
+                            : 'Choose a location first; product search only lists items available there.'
+                    }}
                 </p>
             </div>
             <Button variant="outline" as-child>
-                <Link :href="salesRoutes.index.url(teamSlug)">
+                <Link
+                    :href="
+                        isDraftSale
+                            ? salesDraftRoutes.index.url(teamSlug)
+                            : salesRoutes.index.url(teamSlug)
+                    "
+                >
                     Back to list
                 </Link>
             </Button>
@@ -605,7 +650,7 @@ function submitSale() {
                             required
                         />
                     </div>
-                    <div class="grid gap-2">
+                    <div v-if="!isDraftSale" class="grid gap-2">
                         <Label>Status *</Label>
                         <Select v-model="form.status">
                             <SelectTrigger>
@@ -768,7 +813,11 @@ function submitSale() {
                     v-if="!form.lines.length"
                     class="text-muted-foreground py-4 text-center text-sm"
                 >
-                    Add at least one product from the search field above.
+                    {{
+                        isDraftSale
+                            ? 'No products yet — optional for drafts. Add lines when ready.'
+                            : 'Add at least one product from the search field above.'
+                    }}
                 </p>
                 <div class="mt-4 flex justify-end text-sm">
                     <span class="text-muted-foreground">Lines total:&nbsp;</span>
@@ -979,13 +1028,19 @@ function submitSale() {
 
             <div class="flex flex-wrap justify-end gap-2">
                 <Button variant="outline" type="button" as-child>
-                    <Link :href="salesRoutes.index.url(teamSlug)">
+                    <Link
+                        :href="
+                            isDraftSale
+                                ? salesDraftRoutes.index.url(teamSlug)
+                                : salesRoutes.index.url(teamSlug)
+                        "
+                    >
                         Cancel
                     </Link>
                 </Button>
                 <Button type="submit" :disabled="form.processing">
                     <Spinner v-if="form.processing" />
-                    Save sale
+                    {{ isDraftSale ? 'Save draft' : 'Save sale' }}
                 </Button>
             </div>
         </Form>

@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     Award,
     BarChart3,
+    FileText,
     Barcode,
     Building2,
     ChevronRight,
@@ -20,6 +21,7 @@ import {
     Printer as PrinterIcon,
     Receipt,
     Ruler,
+    ScanLine,
     Settings,
     Shield,
     ShoppingCart,
@@ -60,12 +62,14 @@ import brands from '@/routes/brands';
 import customerGroups from '@/routes/customer-groups';
 import customers from '@/routes/customers';
 import paymentSettingsRoutes from '@/routes/payment-settings';
+import posRoutes from '@/routes/pos';
 import productCategories from '@/routes/product-categories';
 import products from '@/routes/products';
 import purchaseReturnRoutes from '@/routes/purchase-returns';
 import purchases from '@/routes/purchases';
 import receiptPrinterRoutes from '@/routes/receipt-printer';
 import salesCommissionAgentRoutes from '@/routes/sales-commission-agents';
+import salesDraftRoutes from '@/routes/sales/drafts';
 import salesRoutes from '@/routes/sales';
 import sellingPriceGroups from '@/routes/selling-price-groups';
 import suppliers from '@/routes/suppliers';
@@ -219,6 +223,30 @@ const salesCreateUrl = computed(() =>
         : '/',
 );
 
+const salesDraftsListUrl = computed(() =>
+    page.props.currentTeam
+        ? salesDraftRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const salesDraftsCreateUrl = computed(() =>
+    page.props.currentTeam
+        ? salesDraftRoutes.create.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const posMainUrl = computed(() =>
+    page.props.currentTeam
+        ? posRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const posListUrl = computed(() =>
+    page.props.currentTeam
+        ? posRoutes.list.url(page.props.currentTeam.slug)
+        : '/',
+);
+
 const contactsOpen = ref(false);
 const purchasesOpen = ref(false);
 const sellOpen = ref(false);
@@ -320,11 +348,23 @@ watch(
 
 watch(
     () =>
-        [page.url, salesListUrl.value, salesCreateUrl.value] as const,
+        [
+            page.url,
+            salesListUrl.value,
+            salesCreateUrl.value,
+            salesDraftsListUrl.value,
+            salesDraftsCreateUrl.value,
+            posMainUrl.value,
+            posListUrl.value,
+        ] as const,
     () => {
         sellOpen.value =
             isCurrentUrl(salesListUrl.value) ||
-            isCurrentUrl(salesCreateUrl.value);
+            isCurrentUrl(salesCreateUrl.value) ||
+            isCurrentUrl(salesDraftsListUrl.value) ||
+            isCurrentUrl(salesDraftsCreateUrl.value) ||
+            isCurrentUrl(posMainUrl.value) ||
+            isCurrentUrl(posListUrl.value);
     },
     { immediate: true },
 );
@@ -819,7 +859,11 @@ const collapsibleNav = [
                                 <SidebarMenuButton
                                     :is-active="
                                         isCurrentUrl(salesListUrl) ||
-                                        isCurrentUrl(salesCreateUrl)
+                                        isCurrentUrl(salesCreateUrl) ||
+                                        isCurrentUrl(salesDraftsListUrl) ||
+                                        isCurrentUrl(salesDraftsCreateUrl) ||
+                                        isCurrentUrl(posMainUrl) ||
+                                        isCurrentUrl(posListUrl)
                                     "
                                     tooltip="Sell"
                                 >
@@ -857,6 +901,64 @@ const collapsibleNav = [
                                             <Link :href="salesCreateUrl">
                                                 <SquarePlus />
                                                 <span>Add sale</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(salesDraftsListUrl)
+                                            "
+                                        >
+                                            <Link :href="salesDraftsListUrl">
+                                                <FileText />
+                                                <span>List draft</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    salesDraftsCreateUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link :href="salesDraftsCreateUrl">
+                                                <SquarePlus />
+                                                <span>Add draft</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(posMainUrl)
+                                            "
+                                        >
+                                            <Link :href="posMainUrl">
+                                                <ScanLine />
+                                                <span>Pos</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(posListUrl)
+                                            "
+                                        >
+                                            <Link :href="posListUrl">
+                                                <ListOrdered />
+                                                <span>Pos list</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
