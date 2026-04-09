@@ -7,6 +7,7 @@ import {
     Barcode,
     Building2,
     ChevronRight,
+    ClipboardList,
     CircleDollarSign,
     Contact,
     FolderTree,
@@ -70,6 +71,7 @@ import purchases from '@/routes/purchases';
 import receiptPrinterRoutes from '@/routes/receipt-printer';
 import salesCommissionAgentRoutes from '@/routes/sales-commission-agents';
 import salesDraftRoutes from '@/routes/sales/drafts';
+import salesQuotationsRoutes from '@/routes/sales/quotations';
 import salesRoutes from '@/routes/sales';
 import sellingPriceGroups from '@/routes/selling-price-groups';
 import suppliers from '@/routes/suppliers';
@@ -235,6 +237,18 @@ const salesDraftsCreateUrl = computed(() =>
         : '/',
 );
 
+const salesQuotationsListUrl = computed(() =>
+    page.props.currentTeam
+        ? salesQuotationsRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const salesQuotationsCreateUrl = computed(() =>
+    page.props.currentTeam
+        ? salesQuotationsRoutes.create.url(page.props.currentTeam.slug)
+        : '/',
+);
+
 const posMainUrl = computed(() =>
     page.props.currentTeam
         ? posRoutes.index.url(page.props.currentTeam.slug)
@@ -354,6 +368,8 @@ watch(
             salesCreateUrl.value,
             salesDraftsListUrl.value,
             salesDraftsCreateUrl.value,
+            salesQuotationsListUrl.value,
+            salesQuotationsCreateUrl.value,
             posMainUrl.value,
             posListUrl.value,
         ] as const,
@@ -363,6 +379,8 @@ watch(
             isCurrentUrl(salesCreateUrl.value) ||
             isCurrentUrl(salesDraftsListUrl.value) ||
             isCurrentUrl(salesDraftsCreateUrl.value) ||
+            isCurrentUrl(salesQuotationsListUrl.value) ||
+            isCurrentUrl(salesQuotationsCreateUrl.value) ||
             isCurrentUrl(posMainUrl.value) ||
             isCurrentUrl(posListUrl.value);
     },
@@ -862,6 +880,8 @@ const collapsibleNav = [
                                         isCurrentUrl(salesCreateUrl) ||
                                         isCurrentUrl(salesDraftsListUrl) ||
                                         isCurrentUrl(salesDraftsCreateUrl) ||
+                                        isCurrentUrl(salesQuotationsListUrl) ||
+                                        isCurrentUrl(salesQuotationsCreateUrl) ||
                                         isCurrentUrl(posMainUrl) ||
                                         isCurrentUrl(posListUrl)
                                     "
@@ -931,6 +951,40 @@ const collapsibleNav = [
                                             <Link :href="salesDraftsCreateUrl">
                                                 <SquarePlus />
                                                 <span>Add draft</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    salesQuotationsListUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link :href="salesQuotationsListUrl">
+                                                <ClipboardList />
+                                                <span>List quotation</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    salesQuotationsCreateUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link
+                                                :href="salesQuotationsCreateUrl"
+                                            >
+                                                <SquarePlus />
+                                                <span>Add quotation</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>

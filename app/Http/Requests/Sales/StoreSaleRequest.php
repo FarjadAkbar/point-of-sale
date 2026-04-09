@@ -118,30 +118,33 @@ class StoreSaleRequest extends FormRequest
         $validator->after(function (Validator $v) {
             /** @var Team $team */
             $team = $this->route('current_team');
-            $settings = $team->resolvedPaymentSettings();
-            $method = $this->input('payment.method');
 
-            if ($method === 'cash' && ! $settings['cash_enabled']) {
-                $v->errors()->add('payment.method', 'Cash payments are disabled for this business.');
-            }
+            if ($this->input('status') !== 'quotation') {
+                $settings = $team->resolvedPaymentSettings();
+                $method = $this->input('payment.method');
 
-            if ($method === 'bank_transfer' && ! $settings['bank_transfer_enabled']) {
-                $v->errors()->add('payment.method', 'Bank transfer payments are disabled for this business.');
-            }
-
-            $accountId = $this->input('payment.payment_account_id');
-            if ($accountId) {
-                $account = PaymentAccount::query()
-                    ->forTeam($team)
-                    ->whereKey($accountId)
-                    ->first();
-                if (! $account || ! $account->is_active) {
-                    $v->errors()->add('payment.payment_account_id', 'Invalid payment account.');
-
-                    return;
+                if ($method === 'cash' && ! $settings['cash_enabled']) {
+                    $v->errors()->add('payment.method', 'Cash payments are disabled for this business.');
                 }
-                if ($account->payment_method !== $method) {
-                    $v->errors()->add('payment.payment_account_id', 'The account does not match the payment method.');
+
+                if ($method === 'bank_transfer' && ! $settings['bank_transfer_enabled']) {
+                    $v->errors()->add('payment.method', 'Bank transfer payments are disabled for this business.');
+                }
+
+                $accountId = $this->input('payment.payment_account_id');
+                if ($accountId) {
+                    $account = PaymentAccount::query()
+                        ->forTeam($team)
+                        ->whereKey($accountId)
+                        ->first();
+                    if (! $account || ! $account->is_active) {
+                        $v->errors()->add('payment.payment_account_id', 'Invalid payment account.');
+
+                        return;
+                    }
+                    if ($account->payment_method !== $method) {
+                        $v->errors()->add('payment.payment_account_id', 'The account does not match the payment method.');
+                    }
                 }
             }
 

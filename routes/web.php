@@ -163,6 +163,10 @@ Route::prefix('{current_team}')
         Route::get('sales/drafts/create', [SaleController::class, 'createDraft'])->name('sales.drafts.create');
         Route::post('sales/drafts', [SaleController::class, 'storeDraft'])->name('sales.drafts.store');
 
+        Route::get('sales/quotations', [SaleController::class, 'quotationsIndex'])->name('sales.quotations.index');
+        Route::get('sales/quotations/create', [SaleController::class, 'createQuotation'])->name('sales.quotations.create');
+        Route::post('sales/quotations', [SaleController::class, 'storeQuotation'])->name('sales.quotations.store');
+
         Route::get('sales', [SaleController::class, 'index'])->name('sales.index');
         Route::get('sales/create', [SaleController::class, 'create'])->name('sales.create');
         Route::post('sales', [SaleController::class, 'store'])->name('sales.store');

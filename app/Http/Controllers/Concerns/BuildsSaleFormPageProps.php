@@ -13,7 +13,7 @@ trait BuildsSaleFormPageProps
     /**
      * @return array<string, mixed>
      */
-    protected function saleFormPageProps(Team $current_team, bool $isDraftSale = false): array
+    protected function saleFormPageProps(Team $current_team, bool $isDraftSale = false, bool $isQuotationSale = false): array
     {
         $customers = Customer::query()
             ->forTeam($current_team)
@@ -69,6 +69,7 @@ trait BuildsSaleFormPageProps
             ]),
             'customerGroups' => $groups,
             'isDraftSale' => $isDraftSale,
+            'isQuotationSale' => $isQuotationSale && ! $isDraftSale,
         ];
     }
 }

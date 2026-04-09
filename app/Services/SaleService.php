@@ -75,14 +75,16 @@ class SaleService
                 $sale->lines()->create($line);
             }
 
-            $sale->payments()->create([
-                'amount' => round((float) $data['payment']['amount'], 4),
-                'paid_on' => $data['payment']['paid_on'],
-                'method' => $data['payment']['method'],
-                'payment_account_id' => $data['payment']['payment_account_id'] ?? null,
-                'note' => $data['payment']['note'] ?? null,
-                'bank_account_number' => $data['payment']['bank_account_number'] ?? null,
-            ]);
+            if (($data['status'] ?? '') !== 'quotation' && isset($data['payment']) && is_array($data['payment'])) {
+                $sale->payments()->create([
+                    'amount' => round((float) $data['payment']['amount'], 4),
+                    'paid_on' => $data['payment']['paid_on'],
+                    'method' => $data['payment']['method'],
+                    'payment_account_id' => $data['payment']['payment_account_id'] ?? null,
+                    'note' => $data['payment']['note'] ?? null,
+                    'bank_account_number' => $data['payment']['bank_account_number'] ?? null,
+                ]);
+            }
 
             $sale->load(['customer', 'businessLocation', 'lines.product']);
             $this->productStockService->applySaleFinal($sale);

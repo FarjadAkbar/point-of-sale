@@ -24,6 +24,7 @@ import {
 import customerRoutes from '@/routes/customers';
 import productRoutes from '@/routes/products';
 import salesDraftRoutes from '@/routes/sales/drafts';
+import salesQuotationsRoutes from '@/routes/sales/quotations';
 import salesRoutes from '@/routes/sales';
 import type { Team } from '@/types';
 
@@ -66,12 +67,17 @@ const props = withDefaults(
         teamMembers: { id: number; name: string; email: string }[];
         customerGroups: { id: number; name: string }[];
         isDraftSale?: boolean;
+        isQuotationSale?: boolean;
     }>(),
-    { isDraftSale: false },
+    { isDraftSale: false, isQuotationSale: false },
 );
 
 defineOptions({
-    layout: (p: { currentTeam?: Team | null; isDraftSale?: boolean }) => {
+    layout: (p: {
+        currentTeam?: Team | null;
+        isDraftSale?: boolean;
+        isQuotationSale?: boolean;
+    }) => {
         const slug = p.currentTeam!.slug;
 
         if (p.isDraftSale) {
@@ -88,6 +94,25 @@ defineOptions({
                     {
                         title: 'Add draft',
                         href: salesDraftRoutes.create.url(slug),
+                    },
+                ],
+            };
+        }
+
+        if (p.isQuotationSale) {
+            return {
+                breadcrumbs: [
+                    {
+                        title: 'All sales',
+                        href: salesRoutes.index.url(slug),
+                    },
+                    {
+                        title: 'List quotation',
+                        href: salesQuotationsRoutes.index.url(slug),
+                    },
+                    {
+                        title: 'Add quotation',
+                        href: salesQuotationsRoutes.create.url(slug),
                     },
                 ],
             };
@@ -129,7 +154,11 @@ const form = useForm({
     customer_id: '',
     invoice_no: '',
     transaction_date: toLocalInput(),
-    status: props.isDraftSale ? 'draft' : 'final',
+    status: props.isDraftSale
+        ? 'draft'
+        : props.isQuotationSale
+          ? 'quotation'
+          : 'final',
     pay_term_number: '',
     pay_term_type: NONE,
     discount_type: 'none',
@@ -436,9 +465,13 @@ const grandTotal = computed(() => {
 });
 
 watch(
-    grandTotal,
-    (t) => {
-        form.payment.amount = t.toFixed(2);
+    [grandTotal, () => props.isQuotationSale],
+    () => {
+        if (props.isQuotationSale) {
+            form.payment.amount = '0';
+        } else {
+            form.payment.amount = grandTotal.value.toFixed(2);
+        }
     },
     { immediate: true },
 );
@@ -475,6 +508,14 @@ function submitSale() {
                 product_tax_percent: Number(row.product_tax_percent) || 0,
             }));
 
+            const {
+                document,
+                lines: _l,
+                additional_expenses: _a,
+                payment: _p,
+                ...rest
+            } = d;
+
             const pay = {
                 amount: Number(d.payment.amount) || 0,
                 paid_on: d.payment.paid_on,
@@ -488,17 +529,13 @@ function submitSale() {
                     d.payment.bank_account_number?.trim() || null,
             };
 
-            const {
-                document,
-                lines: _l,
-                additional_expenses: _a,
-                payment: _p,
-                ...rest
-            } = d;
-
-            return {
+            const payload: Record<string, unknown> = {
                 ...rest,
-                status: props.isDraftSale ? 'draft' : d.status,
+                status: props.isDraftSale
+                    ? 'draft'
+                    : props.isQuotationSale
+                      ? 'quotation'
+                      : d.status,
                 customer_id: Number(d.customer_id),
                 business_location_id: Number(d.business_location_id),
                 invoice_no: d.invoice_no?.trim() || null,
@@ -514,14 +551,21 @@ function submitSale() {
                 shipping_charges: Number(d.shipping_charges) || 0,
                 lines: JSON.stringify(lines),
                 additional_expenses: JSON.stringify(expenses),
-                payment: JSON.stringify(pay),
                 document,
             };
+
+            if (!props.isQuotationSale) {
+                payload.payment = JSON.stringify(pay);
+            }
+
+            return payload;
         })
         .post(
             props.isDraftSale
                 ? salesDraftRoutes.store.url(teamSlug.value)
-                : salesRoutes.store.url(teamSlug.value),
+                : props.isQuotationSale
+                  ? salesQuotationsRoutes.store.url(teamSlug.value)
+                  : salesRoutes.store.url(teamSlug.value),
             {
                 forceFormData: true,
                 preserveScroll: true,
@@ -531,19 +575,31 @@ function submitSale() {
 </script>
 
 <template>
-    <Head :title="isDraftSale ? 'Add draft' : 'Add sale'" />
+    <Head
+        :title="
+            isDraftSale ? 'Add draft' : isQuotationSale ? 'Add quotation' : 'Add sale'
+        "
+    />
 
     <div class="mx-auto flex max-w-6xl flex-1 flex-col gap-6 p-4 md:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold tracking-tight">
-                    {{ isDraftSale ? 'Add draft' : 'Add sale' }}
+                    {{
+                        isDraftSale
+                            ? 'Add draft'
+                            : isQuotationSale
+                              ? 'Add quotation'
+                              : 'Add sale'
+                    }}
                 </h1>
                 <p class="text-muted-foreground text-sm">
                     {{
                         isDraftSale
                             ? 'Save as draft without finalizing. Products are optional until you finalize later.'
-                            : 'Choose a location first; product search only lists items available there.'
+                            : isQuotationSale
+                              ? 'Save as quotation; stock is not reduced until you convert to a final sale later.'
+                              : 'Choose a location first; product search only lists items available there.'
                     }}
                 </p>
             </div>
@@ -552,7 +608,9 @@ function submitSale() {
                     :href="
                         isDraftSale
                             ? salesDraftRoutes.index.url(teamSlug)
-                            : salesRoutes.index.url(teamSlug)
+                            : isQuotationSale
+                              ? salesQuotationsRoutes.index.url(teamSlug)
+                              : salesRoutes.index.url(teamSlug)
                     "
                 >
                     Back to list
@@ -650,7 +708,10 @@ function submitSale() {
                             required
                         />
                     </div>
-                    <div v-if="!isDraftSale" class="grid gap-2">
+                    <div
+                        v-if="!isDraftSale && !isQuotationSale"
+                        class="grid gap-2"
+                    >
                         <Label>Status *</Label>
                         <Select v-model="form.status">
                             <SelectTrigger>
@@ -940,6 +1001,7 @@ function submitSale() {
             </section>
 
             <section
+                v-if="!isQuotationSale"
                 class="rounded-xl border border-border bg-card p-4 shadow-sm md:p-6"
             >
                 <h2 class="mb-4 text-lg font-medium">Payment</h2>
@@ -1032,7 +1094,9 @@ function submitSale() {
                         :href="
                             isDraftSale
                                 ? salesDraftRoutes.index.url(teamSlug)
-                                : salesRoutes.index.url(teamSlug)
+                                : isQuotationSale
+                                  ? salesQuotationsRoutes.index.url(teamSlug)
+                                  : salesRoutes.index.url(teamSlug)
                         "
                     >
                         Cancel
@@ -1040,7 +1104,13 @@ function submitSale() {
                 </Button>
                 <Button type="submit" :disabled="form.processing">
                     <Spinner v-if="form.processing" />
-                    {{ isDraftSale ? 'Save draft' : 'Save sale' }}
+                    {{
+                        isDraftSale
+                            ? 'Save draft'
+                            : isQuotationSale
+                              ? 'Save quotation'
+                              : 'Save sale'
+                    }}
                 </Button>
             </div>
         </Form>
