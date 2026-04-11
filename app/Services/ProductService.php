@@ -8,6 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ProductService
 {
@@ -87,18 +88,74 @@ class ProductService
     }
 
     /**
+     * @param  array<string, mixed>  $data
+     * @param  list<array{business_location_id?: int, quantity?: float|int|string}>  $openingStocks
+     */
+    public function update(
+        Product $product,
+        array $data,
+        ?UploadedFile $productImage,
+        ?UploadedFile $productBrochure,
+        array $openingStocks = [],
+    ): Product {
+        return DB::transaction(function () use ($product, $data, $productImage, $productBrochure, $openingStocks) {
+            if ($productImage) {
+                if ($product->image_path) {
+                    Storage::disk('public')->delete($product->image_path);
+                }
+                $data['image_path'] = $productImage->store('products/images', 'public');
+            }
+            if ($productBrochure) {
+                if ($product->brochure_path) {
+                    Storage::disk('public')->delete($product->brochure_path);
+                }
+                $data['brochure_path'] = $productBrochure->store('products/brochures', 'public');
+            }
+
+            $product->update($data);
+            $product->load(['unit', 'brand', 'category']);
+
+            if ($openingStocks !== [] && $product->manage_stock) {
+                $this->productStockService->setOpeningStocks($product, $openingStocks);
+            }
+
+            return $product;
+        });
+    }
+
+    public function delete(Product $product): void
+    {
+        DB::transaction(function () use ($product) {
+            if ($product->image_path) {
+                Storage::disk('public')->delete($product->image_path);
+            }
+            if ($product->brochure_path) {
+                Storage::disk('public')->delete($product->brochure_path);
+            }
+            $product->delete();
+        });
+    }
+
+    /**
      * @return Builder<Product>
      */
-    public function searchQuery(Team $team, string $term, bool $sellableOnly = false, ?int $businessLocationId = null): Builder
+    public function searchQuery(Team $team, string $term, bool $sellableOnly = false, ?int $businessLocationId = null, ?int $categoryId = null): Builder
     {
-        $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $term).'%';
+        $term = trim($term);
 
-        $query = Product::query()
-            ->forTeam($team)
-            ->where(function ($q) use ($like) {
+        $query = Product::query()->forTeam($team);
+
+        if ($term !== '') {
+            $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $term).'%';
+            $query->where(function ($q) use ($like) {
                 $q->where('name', 'like', $like)
                     ->orWhere('sku', 'like', $like);
             });
+        }
+
+        if ($categoryId !== null && $categoryId > 0) {
+            $query->where('category_id', $categoryId);
+        }
 
         if ($sellableOnly) {
             $query->where('not_for_selling', false);
@@ -108,8 +165,18 @@ class ProductService
             $query->forBusinessLocation($businessLocationId);
         }
 
+        $query->with(['category:id,name']);
+
+        if ($businessLocationId !== null) {
+            $query->withSum([
+                'stocks as location_stock_quantity' => fn ($q) => $q->where('business_location_id', $businessLocationId),
+            ], 'quantity');
+        }
+
+        $limit = $term === '' ? 200 : 25;
+
         return $query
             ->orderBy('name')
-            ->limit(25);
+            ->limit($limit);
     }
 }

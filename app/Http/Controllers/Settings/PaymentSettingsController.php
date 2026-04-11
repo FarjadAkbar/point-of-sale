@@ -14,6 +14,7 @@ class PaymentSettingsController extends Controller
     public function edit(Team $current_team): Response
     {
         $accounts = $current_team->paymentAccounts()
+            ->forPaymentSelection()
             ->orderBy('payment_method')
             ->orderBy('name')
             ->get();

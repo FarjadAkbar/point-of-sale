@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { useDebounceFn, useStorage } from '@vueuse/core';
 import { Plus } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+import SaleRowActions from '@/components/sales/SaleRowActions.vue';
 import StandardDataTable from '@/components/StandardDataTable.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +41,7 @@ type Paginated = {
 
 const props = defineProps<{
     sales: Paginated;
+    customers: { id: number; display_name: string }[];
     filters: {
         search: string;
         sort: string;
@@ -236,6 +238,9 @@ function sortIndicator(sortKey: string | null): string {
             <table class="w-full min-w-[720px] border-collapse text-sm">
                 <thead>
                     <tr class="border-b border-border">
+                        <th class="bg-muted/40 px-3 py-2 text-right font-medium w-12">
+                            Actions
+                        </th>
                         <th
                             v-for="col in visibleColumns"
                             :key="col.id"
@@ -262,6 +267,13 @@ function sortIndicator(sortKey: string | null): string {
                         :key="row.id"
                         class="border-b border-border/80 hover:bg-muted/20"
                     >
+                        <td class="px-1 py-2 text-right">
+                            <SaleRowActions
+                                :row="row"
+                                :team-slug="teamSlug"
+                                :customers="customers"
+                            />
+                        </td>
                         <td
                             v-for="col in visibleColumns"
                             :key="col.id"
@@ -272,7 +284,7 @@ function sortIndicator(sortKey: string | null): string {
                     </tr>
                     <tr v-if="!(sales?.data?.length)">
                         <td
-                            :colspan="visibleColumns.length"
+                            :colspan="visibleColumns.length + 1"
                             class="px-3 py-8 text-center text-muted-foreground"
                         >
                             No sales yet.

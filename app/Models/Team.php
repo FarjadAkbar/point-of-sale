@@ -178,11 +178,35 @@ class Team extends Model
     }
 
     /**
+     * @return HasMany<AccountType, $this>
+     */
+    public function accountTypes(): HasMany
+    {
+        return $this->hasMany(AccountType::class);
+    }
+
+    /**
      * @return HasMany<Purchase, $this>
      */
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class);
+    }
+
+    /**
+     * @return HasMany<ExpenseCategory, $this>
+     */
+    public function expenseCategories(): HasMany
+    {
+        return $this->hasMany(ExpenseCategory::class);
+    }
+
+    /**
+     * @return HasMany<Expense, $this>
+     */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
     }
 
     /**

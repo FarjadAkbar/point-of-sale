@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { useDebounceFn, useStorage } from '@vueuse/core';
+import { Pencil, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import StandardDataTable from '@/components/StandardDataTable.vue';
 import { Button } from '@/components/ui/button';
@@ -166,6 +167,23 @@ function importXlsx() {
     router.post(productRoutes.import.xlsx.url(teamSlug.value));
 }
 
+function destroyProduct(row: Row) {
+    if (
+        !confirm(
+            `Delete “${row.name}”? This cannot be undone if the product is not referenced elsewhere.`,
+        )
+    ) {
+        return;
+    }
+
+    router.delete(
+        productRoutes.destroy.url({
+            current_team: teamSlug.value,
+            product: row.id,
+        }),
+    );
+}
+
 function displayPrice(row: Row): string {
     if (row.product_type === 'combo' && row.combo_selling_price) {
         return row.combo_selling_price;
@@ -301,7 +319,7 @@ function sortIndicator(sortKey: string | null): string {
                 </DropdownMenu>
             </template>
 
-            <table class="w-full min-w-[800px] border-collapse text-sm">
+            <table class="w-full min-w-[880px] border-collapse text-sm">
                     <thead>
                         <tr class="border-b border-border">
                             <th
@@ -321,6 +339,11 @@ function sortIndicator(sortKey: string | null): string {
                                     }}</span>
                                 </button>
                                 <span v-else>{{ col.label }}</span>
+                            </th>
+                            <th
+                                class="bg-muted/40 px-3 py-2 text-right font-medium"
+                            >
+                                Actions
                             </th>
                         </tr>
                     </thead>
@@ -350,10 +373,46 @@ function sortIndicator(sortKey: string | null): string {
                                     {{ displayCell(row, col.id) }}
                                 </template>
                             </td>
+                            <td class="px-3 py-2 text-right">
+                                <div
+                                    class="flex flex-wrap items-center justify-end gap-0.5"
+                                >
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        class="text-primary hover:text-primary"
+                                        as-child
+                                    >
+                                        <Link
+                                            :href="
+                                                productRoutes.edit.url({
+                                                    current_team: teamSlug,
+                                                    product: row.id,
+                                                })
+                                            "
+                                            aria-label="Edit"
+                                            title="Edit"
+                                        >
+                                            <Pencil />
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        class="text-destructive hover:text-destructive"
+                                        aria-label="Delete"
+                                        title="Delete"
+                                        @click="destroyProduct(row)"
+                                    >
+                                        <Trash2 />
+                                    </Button>
+                                </div>
+                            </td>
                         </tr>
                         <tr v-if="!(products?.data?.length)">
                             <td
-                                :colspan="visibleColumns.length"
+                                :colspan="visibleColumns.length + 1"
                                 class="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No products yet. Use “Add product” to create one.

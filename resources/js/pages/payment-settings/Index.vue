@@ -135,6 +135,8 @@ function openEditAccount(row: AccountRow) {
 function submitCreateAccount() {
     accountForm
         .transform((d) => ({
+            is_ledger: false,
+            redirect_to: 'settings' as const,
             name: d.name,
             payment_method: d.payment_method,
             bank_name: d.bank_name?.trim() || null,
@@ -159,6 +161,7 @@ function submitEditAccount() {
 
     editForm
         .transform((d) => ({
+            redirect_to: 'settings' as const,
             name: d.name,
             payment_method: d.payment_method,
             bank_name: d.bank_name?.trim() || null,
@@ -187,10 +190,13 @@ function destroyAccount(row: AccountRow) {
     }
 
     router.delete(
-        paymentAccountRoutes.destroy.url({
-            current_team: teamSlug.value,
-            payment_account: row.id,
-        }),
+        paymentAccountRoutes.destroy.url(
+            {
+                current_team: teamSlug.value,
+                payment_account: row.id,
+            },
+            { query: { redirect: 'settings' } },
+        ),
         { preserveScroll: true },
     );
 }

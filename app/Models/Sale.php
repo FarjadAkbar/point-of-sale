@@ -24,6 +24,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'shipping_details',
     'shipping_charges',
     'shipping_address',
+    'shipping_status',
+    'delivered_to',
+    'delivery_person',
+    'shipping_customer_note',
+    'shipping_document_path',
     'additional_expenses',
     'sale_note',
     'document_path',
@@ -91,6 +96,22 @@ class Sale extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(SalePayment::class);
+    }
+
+    /**
+     * @return HasMany<SaleActivity, $this>
+     */
+    public function activities(): HasMany
+    {
+        return $this->hasMany(SaleActivity::class)->orderByDesc('created_at');
+    }
+
+    /**
+     * @return HasMany<SaleReturn, $this>
+     */
+    public function saleReturns(): HasMany
+    {
+        return $this->hasMany(SaleReturn::class, 'parent_sale_id');
     }
 
     /**

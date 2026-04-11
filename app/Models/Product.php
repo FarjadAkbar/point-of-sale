@@ -113,6 +113,14 @@ class Product extends Model
     }
 
     /**
+     * @return HasMany<PurchaseLine, $this>
+     */
+    public function purchaseLines(): HasMany
+    {
+        return $this->hasMany(PurchaseLine::class);
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
@@ -129,8 +137,8 @@ class Product extends Model
     /**
      * Products assigned to the given business location (JSON array contains id).
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<static>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeForBusinessLocation($query, int $businessLocationId)
     {

@@ -9,11 +9,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'team_id',
+    'account_type_id',
     'name',
     'payment_method',
     'bank_name',
     'account_number',
     'notes',
+    'opening_balance',
+    'account_details',
+    'created_by',
     'is_active',
 ])]
 class PaymentAccount extends Model
@@ -40,6 +44,33 @@ class PaymentAccount extends Model
     }
 
     /**
+     * @return BelongsTo<AccountType, $this>
+     */
+    public function accountType(): BelongsTo
+    {
+        return $this->belongsTo(AccountType::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Accounts that can be chosen for cash / bank sale & purchase payments.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeForPaymentSelection($query)
+    {
+        return $query->whereIn('payment_method', ['cash', 'bank_transfer']);
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
@@ -52,6 +83,8 @@ class PaymentAccount extends Model
     {
         return [
             'is_active' => 'boolean',
+            'opening_balance' => 'decimal:4',
+            'account_details' => 'array',
         ];
     }
 }

@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Pos\PosListRequest;
 use App\Http\Requests\Sales\StoreSaleRequest;
 use App\Http\Resources\SaleResource;
+use App\Models\Customer;
+use App\Models\ProductCategory;
 use App\Models\Sale;
 use App\Models\Team;
 use App\Services\SaleService;
@@ -26,6 +28,11 @@ class PosController extends Controller
     {
         $props = $this->saleFormPageProps($current_team, false);
         unset($props['isDraftSale']);
+
+        $props['productCategories'] = ProductCategory::query()
+            ->forTeam($current_team)
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return Inertia::render('pos/Index', $props);
     }
@@ -68,8 +75,19 @@ class PosController extends Controller
         $paginator = $query->paginate($perPage)->withQueryString();
         $paginator->through(fn (Sale $s) => (new SaleResource($s))->resolve());
 
+        $customers = Customer::query()
+            ->forTeam($current_team)
+            ->orderBy('business_name')
+            ->orderBy('first_name')
+            ->get(['id', 'business_name', 'first_name', 'last_name'])
+            ->map(fn (Customer $c) => [
+                'id' => $c->id,
+                'display_name' => $c->display_name,
+            ]);
+
         return Inertia::render('pos/List', [
             'sales' => $paginator,
+            'customers' => $customers,
             'filters' => [
                 'search' => $filters['search'] ?? '',
                 'date' => $date,

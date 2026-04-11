@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Models\Sale;
+use App\Models\SaleActivity;
 use App\Models\TaxRate;
 use App\Models\Team;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class SaleService
 {
@@ -175,5 +178,79 @@ class SaleService
         }
 
         return round($sum, 4);
+    }
+
+    public function deleteSale(Team $team, Sale $sale): void
+    {
+        if ($sale->team_id !== $team->id) {
+            abort(403);
+        }
+
+        if ($sale->saleReturns()->exists()) {
+            throw ValidationException::withMessages([
+                'sale' => ['This sale has recorded returns and cannot be deleted.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($sale) {
+            if ($sale->status === 'final') {
+                $this->productStockService->revertSaleFinal($sale);
+            }
+
+            $sale->payments()->delete();
+            $sale->lines()->delete();
+            $sale->activities()->delete();
+
+            if ($sale->document_path) {
+                Storage::disk('public')->delete($sale->document_path);
+            }
+
+            if ($sale->shipping_document_path) {
+                Storage::disk('public')->delete($sale->shipping_document_path);
+            }
+
+            $sale->delete();
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function updateShipping(Team $team, Sale $sale, array $data, ?UploadedFile $shippingDocument): void
+    {
+        if ($sale->team_id !== $team->id) {
+            abort(403);
+        }
+
+        $path = $sale->shipping_document_path;
+        if ($shippingDocument) {
+            if ($path) {
+                Storage::disk('public')->delete($path);
+            }
+            $path = $shippingDocument->store('sales/shipping', 'public');
+        }
+
+        $sale->fill([
+            'shipping_details' => $data['shipping_details'] ?? $sale->shipping_details,
+            'shipping_charges' => isset($data['shipping_charges']) ? round((float) $data['shipping_charges'], 4) : $sale->shipping_charges,
+            'shipping_address' => $data['shipping_address'] ?? $sale->shipping_address,
+            'shipping_status' => $data['shipping_status'] ?? $sale->shipping_status,
+            'delivered_to' => $data['delivered_to'] ?? $sale->delivered_to,
+            'delivery_person' => $data['delivery_person'] ?? $sale->delivery_person,
+            'shipping_customer_note' => $data['shipping_customer_note'] ?? $sale->shipping_customer_note,
+        ]);
+
+        if ($shippingDocument) {
+            $sale->shipping_document_path = $path;
+        }
+
+        $sale->save();
+
+        SaleActivity::query()->create([
+            'sale_id' => $sale->id,
+            'user_id' => auth()->id(),
+            'action' => 'shipping_updated',
+            'note' => null,
+        ]);
     }
 }

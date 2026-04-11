@@ -97,6 +97,7 @@ class PurchaseController extends Controller
 
         $paymentAccounts = PaymentAccount::query()
             ->forTeam($current_team)
+            ->forPaymentSelection()
             ->where('is_active', true)
             ->orderBy('payment_method')
             ->orderBy('name')

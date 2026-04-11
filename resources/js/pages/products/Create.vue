@@ -7,7 +7,7 @@ import {
     usePage,
 } from '@inertiajs/vue3';
 import { ChevronDown, Plus, Trash2 } from 'lucide-vue-next';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, nextTick, reactive, ref, watch } from 'vue';
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import StandardFormModal from '@/components/StandardFormModal.vue';
 import { Button } from '@/components/ui/button';
@@ -85,35 +85,95 @@ type VarRow = {
     dsp_inc_tax: string;
 };
 
+type ProductEditPayload = {
+    id: number;
+    name: string;
+    sku: string | null;
+    barcode_type: string;
+    unit_id: number | null;
+    brand_id: number | null;
+    category_id: number | null;
+    subcategory_id: number | null;
+    business_location_ids: number[];
+    location_stocks: { business_location_id: number; quantity: string }[];
+    manage_stock: boolean;
+    alert_quantity: string;
+    description: string;
+    enable_imei_serial: boolean;
+    not_for_selling: boolean;
+    weight: string;
+    preparation_time_minutes: string;
+    application_tax: string;
+    selling_price_tax_type: string;
+    product_type: string;
+    single_dpp: string;
+    single_dpp_inc_tax: string;
+    profit_percent: string;
+    single_dsp: string;
+    single_dsp_inc_tax: string;
+    combo_lines: ComboLine[];
+    combo_profit_percent: string;
+    combo_selling_price: string;
+    combo_selling_price_inc_tax: string;
+    combo_purchase_total_exc_tax: string;
+    combo_purchase_total_inc_tax: string;
+    variation_sku_format: string;
+    variation_matrix: unknown[];
+};
+
 const page = usePage();
 const teamSlug = computed(() => (page.props.currentTeam as Team).slug);
 
 type BaseUnitOption = { id: number; name: string; short_name: string };
 
-const props = defineProps<{
-    units: UnitRow[];
-    brands: BrandRow[];
-    baseUnits: BaseUnitOption[];
-    categories: Cat[];
-    variationTemplates: VarTpl[];
-    barcodeTypes: { value: string; label: string }[];
-    taxOptions: { id: string; label: string; rate: number }[];
-    businessLocations: { id: number; name: string }[];
-}>();
+const props = withDefaults(
+    defineProps<{
+        units: UnitRow[];
+        brands: BrandRow[];
+        baseUnits: BaseUnitOption[];
+        categories: Cat[];
+        variationTemplates: VarTpl[];
+        barcodeTypes: { value: string; label: string }[];
+        taxOptions: { id: string; label: string; rate: number }[];
+        businessLocations: { id: number; name: string }[];
+        product?: ProductEditPayload | null;
+    }>(),
+    { product: null },
+);
+
+const isEditing = computed(
+    () => props.product != null && Number(props.product.id) > 0,
+);
 
 defineOptions({
-    layout: (p: { currentTeam?: Team | null }) => ({
-        breadcrumbs: [
-            {
-                title: 'Products',
-                href: productRoutes.index.url(p.currentTeam!.slug),
-            },
-            {
-                title: 'Add product',
-                href: productRoutes.create.url(p.currentTeam!.slug),
-            },
-        ],
-    }),
+    layout: (p: {
+        currentTeam?: Team | null;
+        product?: ProductEditPayload | null;
+    }) => {
+        const slug = p.currentTeam!.slug;
+        const editing = p.product != null && p.product.id > 0;
+
+        return {
+            breadcrumbs: [
+                {
+                    title: 'Products',
+                    href: productRoutes.index.url(slug),
+                },
+                editing
+                    ? {
+                          title: 'Edit product',
+                          href: productRoutes.edit.url({
+                              current_team: slug,
+                              product: p.product!.id,
+                          }),
+                      }
+                    : {
+                          title: 'Add product',
+                          href: productRoutes.create.url(slug),
+                      },
+            ],
+        };
+    },
 });
 
 const extraBrands = ref<BrandRow[]>([]);
@@ -245,7 +305,6 @@ const form = useForm({
     combo_purchase_total_exc_tax: '0',
     combo_purchase_total_inc_tax: '0',
     variation_sku_format: 'with_out_variation',
-    variation_matrix: [] as unknown[],
 });
 
 const comboSearch = ref('');
@@ -340,8 +399,9 @@ watch(
 );
 
 const variationTemplateId = ref(NONE);
-const variationRows = ref<VarRow[]>([
-    {
+
+function emptyVariationRow(): VarRow {
+    return {
         sub_sku: '',
         value: '',
         dpp: '',
@@ -349,19 +409,13 @@ const variationRows = ref<VarRow[]>([
         profit_percent: '25',
         dsp: '',
         dsp_inc_tax: '',
-    },
-]);
+    };
+}
+
+const variationRows = ref<VarRow[]>([emptyVariationRow()]);
 
 function addVariationRow() {
-    variationRows.value.push({
-        sub_sku: '',
-        value: '',
-        dpp: '',
-        dpp_inc_tax: '',
-        profit_percent: '25',
-        dsp: '',
-        dsp_inc_tax: '',
-    });
+    variationRows.value.push(emptyVariationRow());
 }
 
 function removeVariationRow(i: number) {
@@ -371,6 +425,117 @@ function removeVariationRow(i: number) {
 
     variationRows.value.splice(i, 1);
 }
+
+function hydrateFromProduct(p: ProductEditPayload) {
+    form.name = p.name;
+    form.sku = p.sku ?? '';
+    form.barcode_type = p.barcode_type || 'none';
+    form.unit_id = p.unit_id != null ? String(p.unit_id) : '';
+    form.brand_id = p.brand_id != null ? String(p.brand_id) : '';
+    form.manage_stock = p.manage_stock;
+    form.alert_quantity = p.alert_quantity;
+    form.description = p.description ?? '';
+    form.enable_imei_serial = p.enable_imei_serial;
+    form.not_for_selling = p.not_for_selling;
+    form.weight = p.weight;
+    form.preparation_time_minutes = p.preparation_time_minutes;
+    form.application_tax = p.application_tax || 'none';
+    form.selling_price_tax_type = p.selling_price_tax_type;
+    form.product_type = p.product_type;
+    form.single_dpp = p.single_dpp;
+    form.single_dpp_inc_tax = p.single_dpp_inc_tax;
+    form.profit_percent = p.profit_percent || '25';
+    form.single_dsp = p.single_dsp;
+    form.single_dsp_inc_tax = p.single_dsp_inc_tax;
+    form.combo_lines = Array.isArray(p.combo_lines) ? [...p.combo_lines] : [];
+    form.combo_profit_percent = p.combo_profit_percent || '25';
+    form.combo_selling_price = p.combo_selling_price;
+    form.combo_selling_price_inc_tax = p.combo_selling_price_inc_tax;
+    form.combo_purchase_total_exc_tax = p.combo_purchase_total_exc_tax;
+    form.combo_purchase_total_inc_tax = p.combo_purchase_total_inc_tax;
+    form.variation_sku_format = p.variation_sku_format;
+
+    const subId = p.subcategory_id;
+    const catId = p.category_id;
+    if (subId != null) {
+        const sub = props.categories.find((c) => c.id === subId);
+        if (sub?.parent_id != null) {
+            categoryId.value = String(sub.parent_id);
+            subcategoryId.value = String(subId);
+        } else {
+            categoryId.value = catId != null ? String(catId) : '';
+            subcategoryId.value = NONE;
+        }
+    } else if (catId != null) {
+        const cat = props.categories.find((c) => c.id === catId);
+        if (cat?.is_sub_taxonomy && cat.parent_id != null) {
+            categoryId.value = String(cat.parent_id);
+            subcategoryId.value = String(catId);
+        } else {
+            categoryId.value = String(catId);
+            subcategoryId.value = NONE;
+        }
+    } else {
+        categoryId.value = '';
+        subcategoryId.value = NONE;
+    }
+
+    const locIds = p.business_location_ids ?? [];
+    selectedLocations.value = locIds.map((id) => String(id));
+
+    const stockMap: Record<string, string> = {};
+    for (const row of p.location_stocks ?? []) {
+        stockMap[String(row.business_location_id)] = row.quantity;
+    }
+
+    void nextTick(() => {
+        for (const id of selectedLocations.value) {
+            openingStockByLocationId[id] = stockMap[id] ?? '';
+        }
+    });
+
+    const matrix = p.variation_matrix;
+    if (Array.isArray(matrix) && matrix.length > 0) {
+        const block = matrix[0] as {
+            variation_template_id?: number | null;
+            variations?: Record<string, unknown>[];
+        };
+        const tid = block.variation_template_id;
+        variationTemplateId.value =
+            tid != null && tid !== 0 ? String(tid) : NONE;
+        const vars = block.variations;
+        if (Array.isArray(vars) && vars.length > 0) {
+            variationRows.value = vars.map((v) => ({
+                sub_sku: String(v.sub_sku ?? ''),
+                value: String(v.value ?? ''),
+                dpp: String(v.default_purchase_price ?? v.dpp ?? ''),
+                dpp_inc_tax: String(v.dpp_inc_tax ?? ''),
+                profit_percent: String(v.profit_percent ?? '25'),
+                dsp: String(v.default_sell_price ?? v.dsp ?? ''),
+                dsp_inc_tax: String(v.sell_price_inc_tax ?? v.dsp_inc_tax ?? ''),
+            }));
+        } else {
+            variationRows.value = [emptyVariationRow()];
+        }
+    } else {
+        variationTemplateId.value = NONE;
+        variationRows.value = [emptyVariationRow()];
+    }
+
+    form.product_image = null;
+    form.product_brochure = null;
+    form.clearErrors();
+}
+
+watch(
+    () => props.product,
+    (p) => {
+        if (p) {
+            hydrateFromProduct(p);
+        }
+    },
+    { immediate: true },
+);
 
 function buildVariationMatrix(): unknown[] {
     const tid =
@@ -570,7 +735,9 @@ function submit() {
     form.category_id = categoryId.value;
     form.subcategory_id = subcategoryId.value || '';
 
-    form.transform((data) => {
+    const opts = { forceFormData: true };
+
+    const transformPayload = (data: Record<string, unknown>) => {
         const out: Record<string, unknown> = { ...data };
         out.business_location_ids = JSON.stringify(
             selectedLocations.value.map((id) => Number(id)),
@@ -615,18 +782,34 @@ function submit() {
         }
 
         return out as typeof data;
-    }).post(productRoutes.store.url(teamSlug.value), { forceFormData: true });
+    };
+
+    if (isEditing.value && props.product) {
+        form
+            .transform(transformPayload)
+            .put(
+                productRoutes.update.url({
+                    current_team: teamSlug.value,
+                    product: props.product.id,
+                }),
+                opts,
+            );
+    } else {
+        form
+            .transform(transformPayload)
+            .post(productRoutes.store.url(teamSlug.value), opts);
+    }
 }
 </script>
 
 <template>
-    <Head title="Add product" />
+    <Head :title="isEditing ? 'Edit product' : 'Add product'" />
 
     <div class="mx-auto flex max-w-5xl flex-1 flex-col gap-6 p-4 md:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold tracking-tight">
-                    Add product
+                    {{ isEditing ? 'Edit product' : 'Add product' }}
                 </h1>
                 <p class="text-sm text-muted-foreground">
                     Single, variation, or combo pricing; rich description; files.
@@ -1209,7 +1392,7 @@ function submit() {
             <div class="flex flex-wrap gap-3">
                 <Button type="submit" :disabled="form.processing">
                     <Spinner v-if="form.processing" />
-                    Save product
+                    {{ isEditing ? 'Update product' : 'Save product' }}
                 </Button>
                 <Button variant="outline" as-child>
                     <Link :href="productRoutes.index.url(teamSlug)">Cancel</Link>

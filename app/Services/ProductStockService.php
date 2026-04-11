@@ -125,6 +125,38 @@ class ProductStockService
     }
 
     /**
+     * Put quantities back when a final sale is voided or adjusted (inside a transaction).
+     */
+    public function revertSaleFinal(Sale $sale): void
+    {
+        if ($sale->status !== 'final') {
+            return;
+        }
+
+        $locationId = (int) $sale->business_location_id;
+
+        if (! BusinessLocation::query()->where('team_id', $sale->team_id)->whereKey($locationId)->exists()) {
+            return;
+        }
+
+        $sale->loadMissing('lines.product');
+
+        foreach ($sale->lines as $line) {
+            $product = $line->product;
+            if (! $product || ! $product->manage_stock) {
+                continue;
+            }
+
+            $qty = (float) $line->quantity;
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $this->addQuantity($product->id, $locationId, $qty);
+        }
+    }
+
+    /**
      * Must run inside an outer database transaction when used with concurrent writers.
      */
     public function subtractQuantity(int $productId, int $businessLocationId, float $qty): void
