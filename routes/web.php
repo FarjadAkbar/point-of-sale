@@ -30,6 +30,7 @@ use App\Http\Controllers\Reports\SalesRepresentativeReportController;
 use App\Http\Controllers\Reports\SellPaymentReportController;
 use App\Http\Controllers\Reports\StockAdjustmentReportController;
 use App\Http\Controllers\Reports\StockReportController;
+use App\Http\Controllers\Reports\TableReportController;
 use App\Http\Controllers\Reports\TaxReportController;
 use App\Http\Controllers\Reports\TrendingProductsReportController;
 use App\Http\Controllers\Sales\DiscountController;
@@ -336,6 +337,9 @@ Route::prefix('{current_team}')
 
         Route::get('reports/sales-representative', [SalesRepresentativeReportController::class, 'salesRepresentativeReport'])
             ->name('reports.sales-representative');
+
+        Route::get('reports/table-report', [TableReportController::class, 'tableReport'])
+            ->name('reports.table-report');
 
         Route::resource('products', ProductController::class)->except(['show']);
     });

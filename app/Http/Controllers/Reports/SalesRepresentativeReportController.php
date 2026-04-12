@@ -40,8 +40,8 @@ class SalesRepresentativeReportController extends Controller
         );
 
         $users = $current_team->members()
-            ->orderBy('name')
-            ->get(['id', 'name'])
+            ->orderBy('users.name')
+            ->get(['users.id', 'users.name'])
             ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])
             ->values()
             ->all();

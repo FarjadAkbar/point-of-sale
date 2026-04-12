@@ -461,6 +461,10 @@ const salesRepresentativeReportUrl = computed(() =>
     page.props.currentTeam ? reportRoutes.salesRepresentative.url(page.props.currentTeam.slug) : '/',
 );
 
+const tableReportUrl = computed(() =>
+    page.props.currentTeam ? reportRoutes.tableReport.url(page.props.currentTeam.slug) : '/',
+);
+
 const contactsOpen = ref(false);
 const purchasesOpen = ref(false);
 const stockTransfersOpen = ref(false);
@@ -677,6 +681,7 @@ watch(
             expenseReportUrl.value,
             registerReportUrl.value,
             salesRepresentativeReportUrl.value,
+            tableReportUrl.value,
         ] as const,
     () => {
         reportsOpen.value =
@@ -694,7 +699,8 @@ watch(
             isCurrentUrl(sellPaymentsReportUrl.value) ||
             isCurrentUrl(expenseReportUrl.value) ||
             isCurrentUrl(registerReportUrl.value) ||
-            isCurrentUrl(salesRepresentativeReportUrl.value);
+            isCurrentUrl(salesRepresentativeReportUrl.value) ||
+            isCurrentUrl(tableReportUrl.value);
     },
     { immediate: true },
 );
@@ -1535,7 +1541,8 @@ watch(
                                         isCurrentUrl(sellPaymentsReportUrl) ||
                                         isCurrentUrl(expenseReportUrl) ||
                                         isCurrentUrl(registerReportUrl) ||
-                                        isCurrentUrl(salesRepresentativeReportUrl)
+                                        isCurrentUrl(salesRepresentativeReportUrl) ||
+                                        isCurrentUrl(tableReportUrl)
                                     "
                                     tooltip="Reports"
                                 >
@@ -1712,6 +1719,17 @@ watch(
                                         >
                                             <Link :href="salesRepresentativeReportUrl">
                                                 <span>Sales representative report</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="isCurrentUrl(tableReportUrl)"
+                                        >
+                                            <Link :href="tableReportUrl">
+                                                <span>Table report</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>

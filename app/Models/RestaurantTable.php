@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'team_id',
@@ -42,6 +43,14 @@ class RestaurantTable extends Model
     public function businessLocation(): BelongsTo
     {
         return $this->belongsTo(BusinessLocation::class);
+    }
+
+    /**
+     * @return HasMany<Sale, $this>
+     */
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class, 'restaurant_table_id');
     }
 
     /**
