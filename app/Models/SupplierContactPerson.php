@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SupplierContactPerson extends Model
 {
     protected $table = 'supplier_contact_persons';
+
     /**
      * @return BelongsTo<Supplier, $this>
      */

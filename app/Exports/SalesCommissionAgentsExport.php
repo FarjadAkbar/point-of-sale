@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Models\SalesCommissionAgent;
 use App\Models\Team;
 use App\Services\SalesCommissionAgentService;
+use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -21,7 +22,7 @@ class SalesCommissionAgentsExport implements FromQuery, WithHeadings, WithMappin
     ) {}
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<SalesCommissionAgent>
+     * @return Builder<SalesCommissionAgent>
      */
     public function query()
     {

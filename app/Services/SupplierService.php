@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Supplier;
-use App\Models\SupplierContactPerson;
 use App\Models\Team;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;

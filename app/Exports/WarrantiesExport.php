@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Models\Team;
 use App\Models\Warranty;
 use App\Services\WarrantyService;
+use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -21,7 +22,7 @@ class WarrantiesExport implements FromQuery, WithHeadings, WithMapping
     ) {}
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<Warranty>
+     * @return Builder<Warranty>
      */
     public function query()
     {

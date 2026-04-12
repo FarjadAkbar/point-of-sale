@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Models\ProductCategory;
 use App\Models\Team;
 use App\Services\ProductCategoryService;
+use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -21,7 +22,7 @@ class ProductCategoriesExport implements FromQuery, WithHeadings, WithMapping
     ) {}
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<ProductCategory>
+     * @return Builder<ProductCategory>
      */
     public function query()
     {

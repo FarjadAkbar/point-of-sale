@@ -8,6 +8,7 @@ use App\Models\SaleReturn;
 use App\Models\Team;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class SalesRepresentativeReportService
 {
@@ -191,7 +192,7 @@ class SalesRepresentativeReportService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Sale>  $sales
+     * @param  Collection<int, Sale>  $sales
      * @return array<string, mixed>
      */
     protected function saleTableFooter($sales): array
@@ -256,7 +257,7 @@ class SalesRepresentativeReportService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Expense>  $expenses
+     * @param  Collection<int, Expense>  $expenses
      * @return array<string, mixed>
      */
     protected function expenseTableFooter($expenses): array

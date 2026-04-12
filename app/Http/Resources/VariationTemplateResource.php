@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\VariationTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\VariationTemplate
+ * @mixin VariationTemplate
  */
 class VariationTemplateResource extends JsonResource
 {

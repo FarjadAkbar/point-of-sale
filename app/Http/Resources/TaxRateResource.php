@@ -2,12 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Models\TaxRate;
 use App\Support\TaxPercentDisplay;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\TaxRate
+ * @mixin TaxRate
  */
 class TaxRateResource extends JsonResource
 {
@@ -28,4 +29,3 @@ class TaxRateResource extends JsonResource
         ];
     }
 }
-

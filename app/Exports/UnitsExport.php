@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Models\Team;
 use App\Models\Unit;
 use App\Services\UnitService;
+use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -21,7 +22,7 @@ class UnitsExport implements FromQuery, WithHeadings, WithMapping
     ) {}
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<Unit>
+     * @return Builder<Unit>
      */
     public function query()
     {

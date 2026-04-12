@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\SellingPriceGroup;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\SellingPriceGroup
+ * @mixin SellingPriceGroup
  */
 class SellingPriceGroupResource extends JsonResource
 {

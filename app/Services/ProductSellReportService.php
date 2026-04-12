@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Customer;
 use App\Models\SaleLine;
 use App\Models\Team;
 use Carbon\Carbon;

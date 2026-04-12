@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Models\Supplier;
 use App\Models\Team;
 use App\Services\SupplierService;
+use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -21,7 +22,7 @@ class SuppliersExport implements FromQuery, WithHeadings, WithMapping
     ) {}
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<Supplier>
+     * @return Builder<Supplier>
      */
     public function query()
     {

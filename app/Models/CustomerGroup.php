@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\CustomerGroupFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -66,8 +67,8 @@ class CustomerGroup extends Model
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Builder<static>  $query
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeForTeam($query, Team $team)
     {
@@ -75,9 +76,9 @@ class CustomerGroup extends Model
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Builder<static>  $query
+     * @param  Builder<static>  $query
      * @param  array<string, mixed>  $filters
-     * @return \Illuminate\Database\Eloquent\Builder<static>
+     * @return Builder<static>
      */
     public function scopeFilter($query, array $filters)
     {

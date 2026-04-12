@@ -5,6 +5,7 @@ namespace App\Exports;
 use App\Models\Customer;
 use App\Models\Team;
 use App\Services\CustomerService;
+use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -21,7 +22,7 @@ class CustomersExport implements FromQuery, WithHeadings, WithMapping
     ) {}
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<Customer>
+     * @return Builder<Customer>
      */
     public function query()
     {
