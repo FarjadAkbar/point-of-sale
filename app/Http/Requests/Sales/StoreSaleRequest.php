@@ -4,6 +4,7 @@ namespace App\Http\Requests\Sales;
 
 use App\Models\PaymentAccount;
 use App\Models\Product;
+use App\Models\RestaurantTable;
 use App\Models\Team;
 use App\Services\ProductStockService;
 use Illuminate\Foundation\Http\FormRequest;
@@ -64,6 +65,12 @@ class StoreSaleRequest extends FormRequest
             $pay['payment_account_id'] = null;
             $this->merge(['payment' => $pay]);
         }
+
+        foreach (['selling_price_group_id', 'restaurant_table_id', 'service_staff_id'] as $k) {
+            if (in_array($this->input($k), ['', null, '__none__'], true)) {
+                $this->merge([$k => null]);
+            }
+        }
     }
 
     /**
@@ -77,6 +84,21 @@ class StoreSaleRequest extends FormRequest
         return [
             'customer_id' => ['required', 'integer', Rule::exists('customers', 'id')->where('team_id', $team->id)],
             'business_location_id' => ['required', 'integer', Rule::exists('business_locations', 'id')->where('team_id', $team->id)],
+            'selling_price_group_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('selling_price_groups', 'id')->where('team_id', $team->id),
+            ],
+            'restaurant_table_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('restaurant_tables', 'id')->where('team_id', $team->id),
+            ],
+            'service_staff_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('team_members', 'user_id')->where('team_id', $team->id),
+            ],
             'invoice_no' => ['nullable', 'string', 'max:255'],
             'transaction_date' => ['required', 'date'],
             'status' => ['required', 'string', Rule::in(['final', 'draft', 'quotation', 'proforma'])],
@@ -149,6 +171,18 @@ class StoreSaleRequest extends FormRequest
             }
 
             $locId = (int) $this->input('business_location_id');
+            $tableId = $this->input('restaurant_table_id');
+            if ($tableId) {
+                $ok = RestaurantTable::query()
+                    ->where('team_id', $team->id)
+                    ->whereKey((int) $tableId)
+                    ->where('business_location_id', $locId)
+                    ->exists();
+                if (! $ok) {
+                    $v->errors()->add('restaurant_table_id', 'The selected table does not belong to this business location.');
+                }
+            }
+
             $lines = $this->input('lines', []);
             if (! is_array($lines) || $locId < 1) {
                 return;

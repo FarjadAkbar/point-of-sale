@@ -66,10 +66,21 @@ const props = withDefaults(
         };
         teamMembers: { id: number; name: string; email: string }[];
         customerGroups: { id: number; name: string }[];
+        sellingPriceGroups: { id: number; name: string }[];
+        restaurantTables: {
+            id: number;
+            name: string;
+            business_location_id: number;
+        }[];
         isDraftSale?: boolean;
         isQuotationSale?: boolean;
     }>(),
-    { isDraftSale: false, isQuotationSale: false },
+    {
+        sellingPriceGroups: () => [],
+        restaurantTables: () => [],
+        isDraftSale: false,
+        isQuotationSale: false,
+    },
 );
 
 defineOptions({
@@ -138,6 +149,12 @@ const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
 
+const defaultServiceStaffId = (() => {
+    const u = (page.props as { auth?: { user?: { id: number } } }).auth?.user;
+
+    return u?.id != null ? String(u.id) : '';
+})();
+
 function toLocalInput(d = new Date()): string {
     const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -151,6 +168,9 @@ const NONE = '__none__';
 
 const form = useForm({
     business_location_id: '',
+    selling_price_group_id: NONE,
+    restaurant_table_id: NONE,
+    service_staff_id: defaultServiceStaffId || NONE,
     customer_id: '',
     invoice_no: '',
     transaction_date: toLocalInput(),
@@ -326,7 +346,30 @@ watch(
         form.lines = [];
         productSearch.value = '';
         productHits.value = [];
+        const allowed = new Set(
+            props.restaurantTables
+                .filter(
+                    (t) =>
+                        String(t.business_location_id) ===
+                        String(form.business_location_id),
+                )
+                .map((t) => String(t.id)),
+        );
+        if (
+            form.restaurant_table_id &&
+            form.restaurant_table_id !== NONE &&
+            !allowed.has(form.restaurant_table_id)
+        ) {
+            form.restaurant_table_id = NONE;
+        }
     },
+);
+
+const tablesForLocation = computed(() =>
+    props.restaurantTables.filter(
+        (t) =>
+            String(t.business_location_id) === String(form.business_location_id),
+    ),
 );
 
 const productSearch = ref('');
@@ -524,6 +567,9 @@ function submitSale() {
                 lines: _l,
                 additional_expenses: _a,
                 payment: _p,
+                selling_price_group_id: _spg,
+                restaurant_table_id: _rt,
+                service_staff_id: _ss,
                 ...rest
             } = d;
 
@@ -549,6 +595,18 @@ function submitSale() {
                       : d.status,
                 customer_id: Number(d.customer_id),
                 business_location_id: Number(d.business_location_id),
+                selling_price_group_id:
+                    !d.selling_price_group_id || d.selling_price_group_id === NONE
+                        ? null
+                        : Number(d.selling_price_group_id),
+                restaurant_table_id:
+                    !d.restaurant_table_id || d.restaurant_table_id === NONE
+                        ? null
+                        : Number(d.restaurant_table_id),
+                service_staff_id:
+                    !d.service_staff_id || d.service_staff_id === NONE
+                        ? null
+                        : Number(d.service_staff_id),
                 invoice_no: d.invoice_no?.trim() || null,
                 pay_term_number:
                     d.pay_term_number === '' ? null : Number(d.pay_term_number),
@@ -654,6 +712,71 @@ function submitSale() {
                         <p class="text-muted-foreground text-xs">
                             Required. Products can only be added if they are
                             assigned to this location.
+                        </p>
+                    </div>
+                    <div class="grid gap-2">
+                        <Label>Type of service</Label>
+                        <Select v-model="form.selling_price_group_id">
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select price group (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem :value="NONE">None</SelectItem>
+                                <SelectItem
+                                    v-for="g in sellingPriceGroups"
+                                    :key="g.id"
+                                    :value="String(g.id)"
+                                >
+                                    {{ g.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p class="text-muted-foreground text-xs">
+                            Optional. Selling price group (e.g. dine-in vs delivery) when you use
+                            multiple price lists.
+                        </p>
+                    </div>
+                    <div class="grid gap-2">
+                        <Label>Table</Label>
+                        <Select
+                            v-model="form.restaurant_table_id"
+                            :disabled="!form.business_location_id"
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select table (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem :value="NONE">None</SelectItem>
+                                <SelectItem
+                                    v-for="t in tablesForLocation"
+                                    :key="t.id"
+                                    :value="String(t.id)"
+                                >
+                                    {{ t.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div class="grid gap-2">
+                        <Label>Service staff</Label>
+                        <Select v-model="form.service_staff_id">
+                            <SelectTrigger>
+                                <SelectValue placeholder="Who is serving this sale?" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem :value="NONE">Default (you)</SelectItem>
+                                <SelectItem
+                                    v-for="m in teamMembers"
+                                    :key="m.id"
+                                    :value="String(m.id)"
+                                >
+                                    {{ m.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p class="text-muted-foreground text-xs">
+                            Defaults to the signed-in user. Change to attribute the sale to another
+                            team member.
                         </p>
                     </div>
                     <div class="grid gap-2 md:col-span-2 lg:col-span-1">

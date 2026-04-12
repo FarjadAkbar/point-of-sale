@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Concerns;
 use App\Models\BusinessLocation;
 use App\Models\Customer;
 use App\Models\PaymentAccount;
+use App\Models\RestaurantTable;
+use App\Models\SellingPriceGroup;
 use App\Models\TaxRate;
 use App\Models\Team;
 
@@ -52,10 +54,21 @@ trait BuildsSaleFormPageProps
             ->get(['id', 'name', 'payment_method']);
 
         $members = $current_team->members()
-            ->orderBy('name')
+            ->orderBy('users.name')
             ->get(['users.id', 'users.name', 'users.email']);
 
         $groups = $current_team->customerGroups()->orderBy('name')->get(['id', 'name']);
+
+        $sellingPriceGroups = SellingPriceGroup::query()
+            ->forTeam($current_team)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $restaurantTables = RestaurantTable::query()
+            ->forTeam($current_team)
+            ->orderBy('business_location_id')
+            ->orderBy('name')
+            ->get(['id', 'name', 'business_location_id']);
 
         return [
             'customers' => $customerRows,
@@ -69,6 +82,8 @@ trait BuildsSaleFormPageProps
                 'email' => $u->email,
             ]),
             'customerGroups' => $groups,
+            'sellingPriceGroups' => $sellingPriceGroups,
+            'restaurantTables' => $restaurantTables,
             'isDraftSale' => $isDraftSale,
             'isQuotationSale' => $isQuotationSale && ! $isDraftSale,
         ];

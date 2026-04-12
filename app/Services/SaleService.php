@@ -53,9 +53,11 @@ class SaleService
 
             $sale = Sale::query()->create([
                 'team_id' => $team->id,
-                'created_by' => auth()->id(),
+                'created_by' => $this->resolveSaleCreatedBy($team, $data),
                 'customer_id' => (int) $data['customer_id'],
                 'business_location_id' => (int) $data['business_location_id'],
+                'selling_price_group_id' => $data['selling_price_group_id'] ?? null,
+                'restaurant_table_id' => $data['restaurant_table_id'] ?? null,
                 'invoice_no' => $data['invoice_no'] ?? null,
                 'transaction_date' => $data['transaction_date'],
                 'status' => $data['status'],
@@ -179,6 +181,19 @@ class SaleService
         }
 
         return round($sum, 4);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function resolveSaleCreatedBy(Team $team, array $data): int
+    {
+        $staffId = isset($data['service_staff_id']) ? (int) $data['service_staff_id'] : 0;
+        if ($staffId > 0 && $team->members()->where('users.id', $staffId)->exists()) {
+            return $staffId;
+        }
+
+        return (int) auth()->id();
     }
 
     public function deleteSale(Team $team, Sale $sale): void
