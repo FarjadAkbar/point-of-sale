@@ -17,6 +17,7 @@ use App\Http\Controllers\ProductCategories\ProductCategoryController;
 use App\Http\Controllers\Products\ProductController;
 use App\Http\Controllers\Purchases\PurchaseController;
 use App\Http\Controllers\Purchases\PurchaseReturnController;
+use App\Http\Controllers\Reports\ActivityLogReportController;
 use App\Http\Controllers\Reports\CustomerGroupReportController;
 use App\Http\Controllers\Reports\CustomerSuppliersReportController;
 use App\Http\Controllers\Reports\ExpenseReportController;
@@ -344,6 +345,9 @@ Route::prefix('{current_team}')
 
         Route::get('reports/service-staff', [ServiceStaffReportController::class, 'serviceStaffReport'])
             ->name('reports.service-staff');
+
+        Route::get('reports/activity-log', [ActivityLogReportController::class, 'activityLog'])
+            ->name('reports.activity-log');
 
         Route::resource('products', ProductController::class)->except(['show']);
     });
