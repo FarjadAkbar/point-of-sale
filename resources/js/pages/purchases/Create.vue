@@ -131,9 +131,11 @@ const form = useForm({
 
 const methodOptions = computed(() => {
     const o: { value: string; label: string }[] = [];
+
     if (props.paymentSettings.cash_enabled) {
         o.push({ value: 'cash', label: 'Cash' });
     }
+
     if (props.paymentSettings.bank_transfer_enabled) {
         o.push({ value: 'bank_transfer', label: 'Bank transfer' });
     }
@@ -145,6 +147,7 @@ const defaultMethod = computed(() => {
     if (props.paymentSettings.cash_enabled) {
         return 'cash';
     }
+
     if (props.paymentSettings.bank_transfer_enabled) {
         return 'bank_transfer';
     }
@@ -223,6 +226,7 @@ const selectedSupplier = computed(() => {
 
 const supplierAddressText = computed(() => {
     const s = selectedSupplier.value;
+
     if (!s) {
         return '';
     }
@@ -244,6 +248,7 @@ const productHits = ref<
 
 const debouncedProductSearch = useDebounceFn(async () => {
     const t = productSearch.value.trim();
+
     if (t.length < 1) {
         productHits.value = [];
 
@@ -329,11 +334,13 @@ const afterDiscountTotal = computed(() =>
 
 const purchaseTaxAmount = computed(() => {
     const id = form.tax_rate_id;
+
     if (!id || id === NONE) {
         return 0;
     }
 
     const rate = props.taxRates.find((r) => String(r.id) === String(id));
+
     if (!rate) {
         return 0;
     }
@@ -346,10 +353,12 @@ const purchaseTaxAmount = computed(() => {
 
 const additionalSum = computed(() => {
     let s = 0;
+
     for (const row of form.additional_expenses) {
         if (!row.name.trim()) {
             continue;
         }
+
         s += Number(row.amount) || 0;
     }
 

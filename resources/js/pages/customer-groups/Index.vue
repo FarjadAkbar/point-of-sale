@@ -9,12 +9,9 @@ import {
 import { useDebounceFn, useStorage } from '@vueuse/core';
 import { Pencil, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
-import cgRoutes from '@/routes/customer-groups';
 import StandardDataTable from '@/components/StandardDataTable.vue';
 import StandardFormModal from '@/components/StandardFormModal.vue';
-import GroupForm from '@/pages/customer-groups/GroupForm.vue';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -31,6 +28,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import GroupForm from '@/pages/customer-groups/GroupForm.vue';
+import cgRoutes from '@/routes/customer-groups';
 import type { Team } from '@/types';
 
 type GroupRow = {
@@ -143,11 +143,13 @@ function indexQuery(
         price_calculation_type:
             calcTypeFilter.value === 'all' ? '' : calcTypeFilter.value,
     };
+
     for (const [k, v] of Object.entries(overrides)) {
         if (v !== undefined && v !== '') {
             q[k] = String(v);
         }
     }
+
     return q;
 }
 
@@ -181,6 +183,7 @@ const editModalOpen = ref(false);
 const indexDismissHref = computed(() => {
     const path = cgRoutes.index.url(teamSlug.value);
     const qs = new URLSearchParams(indexQuery()).toString();
+
     return qs ? `${path}?${qs}` : path;
 });
 
@@ -274,9 +277,11 @@ function submitCreate() {
 
 function submitEdit() {
     const g = props.editingCustomerGroup;
+
     if (!g) {
         return;
     }
+
     editForm
         .transform((data) => transformCgPayload(data))
         .put(
@@ -292,6 +297,7 @@ function destroyCustomerGroup(row: GroupRow) {
     if (!confirm('Delete this customer group?')) {
         return;
     }
+
     router.delete(
         cgRoutes.destroy.url({
             current_team: teamSlug.value,
@@ -304,6 +310,7 @@ function goToPage(url: string | null) {
     if (!url) {
         return;
     }
+
     router.visit(url, { preserveState: true, replace: true });
 }
 
@@ -355,6 +362,7 @@ function sortIndicator(sortKey: string | null): string {
     if (!sortKey || props.filters.sort !== sortKey) {
         return '';
     }
+
     return props.filters.direction === 'asc' ? ' ↑' : ' ↓';
 }
 </script>

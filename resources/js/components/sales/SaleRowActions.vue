@@ -154,8 +154,10 @@ function toDatetimeLocal(iso: string | null): string {
     if (!iso) {
         return '';
     }
+
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, '0');
+
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
@@ -163,8 +165,10 @@ function fromDatetimeLocal(v: string): string {
     if (!v.includes('T')) {
         return v;
     }
+
     const [date, time] = v.split('T');
     const t = (time ?? '00:00').slice(0, 5);
+
     return `${date} ${t}:00`;
 }
 
@@ -172,14 +176,17 @@ function shippingDocUrl(path: string | null): string | null {
     if (!path) {
         return null;
     }
+
     return `${origin}/storage/${path.replace(/^\/+/, '')}`;
 }
 
 async function fetchDetail(saleId: number): Promise<SaleDetail> {
     const cached = detailCache.get(saleId);
+
     if (cached) {
         return cached;
     }
+
     const res = await fetch(salesRoutes.detail.url(props.teamSlug, saleId), {
         headers: {
             Accept: 'application/json',
@@ -188,11 +195,14 @@ async function fetchDetail(saleId: number): Promise<SaleDetail> {
         },
         credentials: 'same-origin',
     });
+
     if (!res.ok) {
         throw new Error('Could not load sale details.');
     }
+
     const body = (await res.json()) as { sale: SaleDetail };
     detailCache.set(saleId, body.sale);
+
     return body.sale;
 }
 
@@ -204,6 +214,7 @@ async function openView() {
     viewOpen.value = true;
     loadError.value = null;
     loading.value = true;
+
     try {
         detail.value = await fetchDetail(props.row.id);
     } catch (e) {
@@ -219,6 +230,7 @@ async function openEdit() {
     editOpen.value = true;
     loadError.value = null;
     loading.value = true;
+
     try {
         const d = await fetchDetail(props.row.id);
         detail.value = d;
@@ -241,6 +253,7 @@ async function openShipping() {
     loadError.value = null;
     shippingFile.value = null;
     loading.value = true;
+
     try {
         const d = await fetchDetail(props.row.id);
         detail.value = d;
@@ -265,6 +278,7 @@ async function openPayments() {
     paymentsOpen.value = true;
     loadError.value = null;
     loading.value = true;
+
     try {
         detail.value = await fetchDetail(props.row.id);
     } catch (e) {
@@ -349,6 +363,7 @@ function confirmDelete() {
     ) {
         return;
     }
+
     deleting.value = true;
     router.delete(salesRoutes.destroy.url(props.teamSlug, props.row.id), {
         preserveScroll: true,
@@ -360,6 +375,7 @@ function confirmDelete() {
 
 function openPrint(kind: 'invoice' | 'packingSlip' | 'deliveryNote') {
     let path: string;
+
     if (kind === 'invoice') {
         path = salesRoutes.documents.invoice.url(props.teamSlug, props.row.id);
     } else if (kind === 'packingSlip') {
@@ -373,6 +389,7 @@ function openPrint(kind: 'invoice' | 'packingSlip' | 'deliveryNote') {
             props.row.id,
         );
     }
+
     window.open(`${origin}${path}`, '_blank', 'noopener,noreferrer');
 }
 
@@ -389,9 +406,11 @@ async function copyInvoiceUrl() {
                 credentials: 'same-origin',
             },
         );
+
         if (!res.ok) {
             throw new Error('Failed');
         }
+
         const body = (await res.json()) as { url: string };
         const absolute = body.url.startsWith('http')
             ? body.url

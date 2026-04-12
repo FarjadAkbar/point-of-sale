@@ -117,6 +117,7 @@ const salesSeries = computed(() => {
         chartHeight - chartPadding.top - chartPadding.bottom;
     const values = Array.from({ length: 30 }, (_, i) => {
         const wobble = Math.sin(i / 3.2) * 22 + Math.sin(i / 1.7) * 12;
+
         return 40 + i * 2.2 + wobble + ((i * 13) % 17);
     });
     const minV = Math.min(...values);
@@ -130,6 +131,7 @@ const salesSeries = computed(() => {
             chartPadding.top +
             innerH -
             ((v - minV) / span) * innerH * 0.92;
+
         return { x, y, v };
     });
 

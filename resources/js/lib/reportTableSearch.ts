@@ -3,9 +3,11 @@
  */
 export function reportRowMatchesSearch(row: unknown, needle: string): boolean {
     const t = needle.trim().toLowerCase();
+
     if (!t) {
         return true;
     }
+
     try {
         return JSON.stringify(row).toLowerCase().includes(t);
     } catch {

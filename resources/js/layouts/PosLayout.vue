@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import { Clock, LogOut } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import TeamSwitcher from '@/components/TeamSwitcher.vue';
-import UserMenuContent from '@/components/UserMenuContent.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,9 +10,9 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import UserMenuContent from '@/components/UserMenuContent.vue';
 import { getInitials } from '@/composables/useInitials';
 import { dashboard } from '@/routes';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 const page = usePage();
 const auth = computed(() => page.props.auth);

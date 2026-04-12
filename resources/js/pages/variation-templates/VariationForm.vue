@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { InertiaForm } from '@inertiajs/vue3';
+import { Minus, Plus } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Minus, Plus } from 'lucide-vue-next';
 
 export type VariationFormData = {
     name: string;
@@ -21,8 +21,10 @@ function addRow() {
 function removeRow(i: number) {
     if (props.form.values.length <= 1) {
         props.form.values[0] = '';
+
         return;
     }
+
     props.form.values.splice(i, 1);
 }
 </script>

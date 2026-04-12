@@ -9,17 +9,9 @@ import {
 import { useDebounceFn, useStorage } from '@vueuse/core';
 import { Pencil, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
-import customerRoutes from '@/routes/customers';
 import StandardDataTable from '@/components/StandardDataTable.vue';
 import StandardFormModal from '@/components/StandardFormModal.vue';
-import CustomerForm from '@/pages/customers/CustomerForm.vue';
-import {
-    applyEditingCustomer,
-    customerFormFields,
-    transformCustomerSubmit,
-} from '@/pages/customers/customerFormState';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -36,6 +28,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import CustomerForm from '@/pages/customers/CustomerForm.vue';
+import {
+    applyEditingCustomer,
+    customerFormFields,
+    transformCustomerSubmit,
+} from '@/pages/customers/customerFormState';
+import customerRoutes from '@/routes/customers';
 import type { Team } from '@/types';
 
 type CustomerRow = {
@@ -162,11 +162,13 @@ function indexQuery(
         entity_type:
             entityTypeFilter.value === 'all' ? '' : entityTypeFilter.value,
     };
+
     for (const [k, v] of Object.entries(overrides)) {
         if (v !== undefined && v !== '') {
             q[k] = String(v);
         }
     }
+
     return q;
 }
 
@@ -208,6 +210,7 @@ const editModalOpen = ref(false);
 const indexDismissHref = computed(() => {
     const path = customerRoutes.index.url(teamSlug.value);
     const qs = new URLSearchParams(indexQuery()).toString();
+
     return qs ? `${path}?${qs}` : path;
 });
 
@@ -260,9 +263,11 @@ function submitCreate() {
 
 function submitEdit() {
     const c = props.editingCustomer;
+
     if (!c) {
         return;
     }
+
     editForm
         .transform((data) => transformCustomerSubmit(data))
         .put(
@@ -278,6 +283,7 @@ function destroyCustomer(row: CustomerRow) {
     if (!confirm('Delete this customer? This cannot be undone.')) {
         return;
     }
+
     router.delete(
         customerRoutes.destroy.url({
             current_team: teamSlug.value,
@@ -290,6 +296,7 @@ function goToPage(url: string | null) {
     if (!url) {
         return;
     }
+
     router.visit(url, { preserveState: true, replace: true });
 }
 
@@ -353,6 +360,7 @@ function sortIndicator(sortKey: string): string {
     if (props.filters.sort !== sortKey) {
         return '';
     }
+
     return props.filters.direction === 'asc' ? ' ↑' : ' ↓';
 }
 </script>

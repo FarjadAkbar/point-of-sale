@@ -121,11 +121,13 @@ function addContactPerson() {
     if (props.form.contact_persons.length >= 5) {
         return;
     }
+
     props.form.contact_persons.push(emptyPerson());
 }
 
 function removeContactPerson(i: number) {
     props.form.contact_persons.splice(i, 1);
+
     if (!props.form.contact_persons.length) {
         props.form.contact_persons.push(emptyPerson());
     }
@@ -133,11 +135,13 @@ function removeContactPerson(i: number) {
 
 function toggleAssigned(id: number, checked: boolean) {
     const set = new Set(props.form.assigned_to_users);
+
     if (checked) {
         set.add(id);
     } else {
         set.delete(id);
     }
+
     props.form.assigned_to_users = [...set];
 }
 

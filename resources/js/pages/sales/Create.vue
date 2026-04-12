@@ -23,9 +23,9 @@ import {
 } from '@/pages/customers/customerFormState';
 import customerRoutes from '@/routes/customers';
 import productRoutes from '@/routes/products';
+import salesRoutes from '@/routes/sales';
 import salesDraftRoutes from '@/routes/sales/drafts';
 import salesQuotationsRoutes from '@/routes/sales/quotations';
-import salesRoutes from '@/routes/sales';
 import type { Team } from '@/types';
 
 type CustomerRow = {
@@ -188,9 +188,11 @@ const form = useForm({
 
 const methodOptions = computed(() => {
     const o: { value: string; label: string }[] = [];
+
     if (props.paymentSettings.cash_enabled) {
         o.push({ value: 'cash', label: 'Cash' });
     }
+
     if (props.paymentSettings.bank_transfer_enabled) {
         o.push({ value: 'bank_transfer', label: 'Bank transfer' });
     }
@@ -202,6 +204,7 @@ const defaultMethod = computed(() => {
     if (props.paymentSettings.cash_enabled) {
         return 'cash';
     }
+
     if (props.paymentSettings.bank_transfer_enabled) {
         return 'bank_transfer';
     }
@@ -286,6 +289,7 @@ const selectedCustomer = computed(() => {
 
 const billingAddressText = computed(() => {
     const c = selectedCustomer.value;
+
     if (!c) {
         return '';
     }
@@ -302,11 +306,13 @@ const billingAddressText = computed(() => {
 
 const shippingAddressText = computed(() => {
     const c = selectedCustomer.value;
+
     if (!c) {
         return '';
     }
 
     const s = c.shipping_address?.trim();
+
     if (s) {
         return s;
     }
@@ -336,6 +342,7 @@ const productHits = ref<
 
 const debouncedProductSearch = useDebounceFn(async () => {
     const t = productSearch.value.trim();
+
     if (t.length < 1 || !form.business_location_id) {
         productHits.value = [];
 
@@ -429,11 +436,13 @@ const afterDiscountTotal = computed(() =>
 
 const saleTaxAmount = computed(() => {
     const id = form.tax_rate_id;
+
     if (!id || id === NONE) {
         return 0;
     }
 
     const rate = props.taxRates.find((r) => String(r.id) === String(id));
+
     if (!rate) {
         return 0;
     }
@@ -446,10 +455,12 @@ const saleTaxAmount = computed(() => {
 
 const additionalSum = computed(() => {
     let s = 0;
+
     for (const row of form.additional_expenses) {
         if (!row.name.trim()) {
             continue;
         }
+
         s += Number(row.amount) || 0;
     }
 

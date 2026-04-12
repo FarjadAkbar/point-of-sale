@@ -91,6 +91,7 @@ watch(
 
 function applyStatus() {
     const current = props.filters.status ?? 'active';
+
     if (statusFilter.value === current) {
         return;
     }
@@ -164,9 +165,11 @@ function openEditAccount(row: AccountRow) {
         : NONE;
     editForm.opening_balance = row.opening_balance ?? '0';
     const d = [...(row.account_details ?? [])];
+
     while (d.length < 6) {
         d.push({ label: '', value: '' });
     }
+
     editForm.account_details = d.slice(0, 6);
     editForm.notes = row.notes ?? '';
     editAccountOpen.value = true;
@@ -195,6 +198,7 @@ function submitAccount() {
 
 function submitEditAccount() {
     const row = editingAccount.value;
+
     if (!row) {
         return;
     }
@@ -229,6 +233,7 @@ function destroyAccount(row: AccountRow) {
     if (row.payment_method !== 'ledger') {
         return;
     }
+
     if (!confirm(`Delete account “${row.name}”?`)) {
         return;
     }
@@ -279,6 +284,7 @@ function methodLabel(m: string): string {
     if (m === 'ledger') {
         return 'Ledger';
     }
+
     if (m === 'bank_transfer') {
         return 'Bank transfer';
     }

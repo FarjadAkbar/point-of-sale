@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { InertiaForm } from '@inertiajs/vue3';
+import { Minus, Plus } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Minus, Plus } from 'lucide-vue-next';
 
 export type ModifierRow = {
     name: string;

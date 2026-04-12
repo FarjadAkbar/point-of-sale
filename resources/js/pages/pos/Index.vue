@@ -134,9 +134,11 @@ const form = useForm({
 
 const methodOptions = computed(() => {
     const o: { value: string; label: string }[] = [];
+
     if (props.paymentSettings.cash_enabled) {
         o.push({ value: 'cash', label: 'Cash' });
     }
+
     if (props.paymentSettings.bank_transfer_enabled) {
         o.push({ value: 'bank_transfer', label: 'Bank transfer' });
     }
@@ -148,6 +150,7 @@ const defaultMethod = computed(() => {
     if (props.paymentSettings.cash_enabled) {
         return 'cash';
     }
+
     if (props.paymentSettings.bank_transfer_enabled) {
         return 'bank_transfer';
     }
@@ -305,6 +308,7 @@ async function fetchProducts(
         business_location_id: form.business_location_id,
         active_only: '1',
     };
+
     if (categoryId != null && categoryId > 0) {
         query.category_id = String(categoryId);
     }
@@ -329,6 +333,7 @@ watch(
         searchDropdownHits.value = [];
         browseProducts.value = [];
         selectedCategoryId.value = null;
+
         if (form.business_location_id) {
             browseProducts.value = await fetchProducts('', null);
         }
@@ -339,6 +344,7 @@ watch(selectedCategoryId, async () => {
     if (!form.business_location_id) {
         return;
     }
+
     productSearch.value = '';
     searchDropdownHits.value = [];
     browseProducts.value = await fetchProducts(
@@ -349,6 +355,7 @@ watch(selectedCategoryId, async () => {
 
 const catalogGridProducts = computed(() => {
     const q = productSearch.value.trim().toLowerCase();
+
     if (!q.length) {
         return browseProducts.value;
     }
@@ -369,7 +376,9 @@ function stockBadge(p: ProductHit): { text: string; variant: 'ok' | 'bad' | 'na'
     if (!p.manage_stock) {
         return { text: '—', variant: 'na' };
     }
+
     const q = Number(p.stock_quantity) || 0;
+
     if (q > 0) {
         return { text: `${formatMoney(q)} in stock`, variant: 'ok' };
     }
@@ -379,17 +388,22 @@ function stockBadge(p: ProductHit): { text: string; variant: 'ok' | 'bad' | 'na'
 
 const debouncedProductSearch = useDebounceFn(async () => {
     const q = productSearch.value.trim();
+
     if (q.length < 1) {
         searchDropdownHits.value = [];
 
         return;
     }
+
     const req = ++productSearchRequestId;
     const hits = await fetchProducts(q, selectedCategoryId.value);
+
     if (req !== productSearchRequestId) {
         return;
     }
+
     searchDropdownHits.value = hits;
+
     if (q.length >= 3 && hits.length === 1) {
         addLine(hits[0]);
     }
@@ -401,16 +415,20 @@ watch(productSearch, () => {
 
         return;
     }
+
     debouncedProductSearch();
 });
 
 async function onProductSearchEnter() {
     const q = productSearch.value.trim();
+
     if (q.length < 1) {
         return;
     }
+
     const hits = await fetchProducts(q, selectedCategoryId.value);
     searchDropdownHits.value = hits;
+
     if (hits.length >= 1) {
         addLine(hits[0]);
     }
@@ -429,6 +447,7 @@ async function addLine(p: ProductHit) {
     });
     productSearch.value = '';
     searchDropdownHits.value = [];
+
     if (form.business_location_id) {
         browseProducts.value = await fetchProducts(
             '',
@@ -437,6 +456,7 @@ async function addLine(p: ProductHit) {
     } else {
         browseProducts.value = [];
     }
+
     focusScanInput();
 }
 
@@ -446,16 +466,20 @@ function removeLine(i: number) {
 
 function bumpLineQty(i: number, delta: number) {
     const row = form.lines[i];
+
     if (!row) {
         return;
     }
+
     const q = Number(row.quantity) || 0;
     const next = q + delta;
+
     if (next < 1) {
         removeLine(i);
 
         return;
     }
+
     row.quantity = String(next);
 }
 
@@ -508,6 +532,7 @@ const headerDiscountLabel = computed(() => {
     if (form.discount_type === 'none') {
         return '';
     }
+
     if (form.discount_type === 'percentage') {
         return `Discount (${Number(form.discount_amount) || 0}%)`;
     }
@@ -519,11 +544,13 @@ const selectedProductCount = computed(() => form.lines.length);
 
 const saleTaxAmount = computed(() => {
     const id = form.tax_rate_id;
+
     if (!id || id === NONE) {
         return 0;
     }
 
     const rate = props.taxRates.find((r) => String(r.id) === String(id));
+
     if (!rate) {
         return 0;
     }
@@ -536,10 +563,12 @@ const saleTaxAmount = computed(() => {
 
 const additionalSum = computed(() => {
     let s = 0;
+
     for (const row of form.additional_expenses) {
         if (!row.name.trim()) {
             continue;
         }
+
         s += Number(row.amount) || 0;
     }
 
@@ -706,6 +735,7 @@ function openPayDialog() {
     if (!canSubmitSale.value) {
         return;
     }
+
     form.payment.amount = grandTotal.value.toFixed(2);
     payOpen.value = true;
 }
@@ -714,11 +744,13 @@ function quickCash() {
     if (!canSubmitSale.value) {
         return;
     }
+
     if (!props.paymentSettings.cash_enabled) {
         alert('Cash payments are disabled for this business.');
 
         return;
     }
+
     form.payment.method = 'cash';
     form.payment.amount = grandTotal.value.toFixed(2);
     postCheckout('final');
@@ -728,6 +760,7 @@ function saveQuotation() {
     if (!canSubmitSale.value) {
         return;
     }
+
     form.payment.amount = grandTotal.value.toFixed(2);
     postCheckout('quotation');
 }
@@ -736,14 +769,17 @@ async function clearCart() {
     if (form.lines.length === 0 && !form.sale_note?.trim()) {
         return;
     }
+
     if (!confirm('Clear the current cart?')) {
         return;
     }
+
     form.lines = [];
     form.sale_note = '';
     form.invoice_no = '';
     productSearch.value = '';
     searchDropdownHits.value = [];
+
     if (form.business_location_id) {
         browseProducts.value = await fetchProducts(
             '',
@@ -752,6 +788,7 @@ async function clearCart() {
     } else {
         browseProducts.value = [];
     }
+
     focusScanInput();
 }
 
@@ -797,6 +834,7 @@ function tryAddProduct(p: ProductHit) {
 
         return;
     }
+
     addLine(p);
 }
 </script>

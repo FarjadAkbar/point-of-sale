@@ -4,12 +4,6 @@ import { Info, RefreshCw } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -26,6 +20,12 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { xsrfToken } from '@/lib/xsrf';
 import orderRoutes from '@/routes/order';
 import salesRoutes from '@/routes/sales';
@@ -131,6 +131,7 @@ function onStaffChange(value: string) {
     if (!teamSlug.value) {
         return;
     }
+
     const q =
         value === 'all'
             ? { service_staff: 'all' }
@@ -145,7 +146,9 @@ function formatWhen(iso: string | null): string {
     if (!iso) {
         return '—';
     }
+
     const d = new Date(iso);
+
     return d.toLocaleString(undefined, {
         year: 'numeric',
         month: '2-digit',
@@ -157,9 +160,11 @@ function formatWhen(iso: string | null): string {
 
 function formatDecimal(v: string | number): string {
     const n = typeof v === 'string' ? Number.parseFloat(v) : v;
+
     if (Number.isNaN(n)) {
         return String(v);
     }
+
     return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -173,6 +178,7 @@ async function openOrderDetail(saleId: number) {
     detailLoading.value = true;
     detailError.value = null;
     detail.value = null;
+
     try {
         const res = await fetch(salesRoutes.detail.url(teamSlug.value, saleId), {
             headers: {
@@ -182,9 +188,11 @@ async function openOrderDetail(saleId: number) {
             },
             credentials: 'same-origin',
         });
+
         if (!res.ok) {
             throw new Error('Could not load order details.');
         }
+
         const body = (await res.json()) as { sale: SaleDetail };
         detail.value = body.sale;
     } catch (e) {
@@ -203,7 +211,9 @@ const invoiceLabel = computed(() => {
     if (!detail.value) {
         return '';
     }
+
     const inv = detail.value.invoice_no?.trim();
+
     return inv ? `#${inv}` : `#${detail.value.id}`;
 });
 
@@ -211,6 +221,7 @@ function paymentMethodLabel(method: string | null): string {
     if (!method) {
         return '—';
     }
+
     const map: Record<string, string> = {
         advance: 'Advance',
         cash: 'Cash',
@@ -220,9 +231,11 @@ function paymentMethodLabel(method: string | null): string {
         other: 'Other',
         ledger: 'Ledger',
     };
+
     if (map[method]) {
         return map[method];
     }
+
     return method.replace(/_/g, ' ');
 }
 </script>

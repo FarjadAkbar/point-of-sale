@@ -28,6 +28,7 @@ use App\Http\Controllers\Reports\PurchaseSellController;
 use App\Http\Controllers\Reports\RegisterReportController;
 use App\Http\Controllers\Reports\SalesRepresentativeReportController;
 use App\Http\Controllers\Reports\SellPaymentReportController;
+use App\Http\Controllers\Reports\ServiceStaffReportController;
 use App\Http\Controllers\Reports\StockAdjustmentReportController;
 use App\Http\Controllers\Reports\StockReportController;
 use App\Http\Controllers\Reports\TableReportController;
@@ -340,6 +341,9 @@ Route::prefix('{current_team}')
 
         Route::get('reports/table-report', [TableReportController::class, 'tableReport'])
             ->name('reports.table-report');
+
+        Route::get('reports/service-staff', [ServiceStaffReportController::class, 'serviceStaffReport'])
+            ->name('reports.service-staff');
 
         Route::resource('products', ProductController::class)->except(['show']);
     });

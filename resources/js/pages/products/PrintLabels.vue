@@ -2,7 +2,6 @@
 import { Head, usePage } from '@inertiajs/vue3';
 import { Search } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
-import products from '@/routes/products';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,6 +14,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import products from '@/routes/products';
 import type { Team } from '@/types';
 
 type SellingPriceGroupRef = { id: number; name: string };
@@ -107,10 +107,13 @@ watch(productSearch, (q) => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(async () => {
         const t = q.trim();
+
         if (t.length < 1) {
             searchHits.value = [];
+
             return;
         }
+
         const url = products.search.url(teamSlug.value, { query: { q: t } });
         const r = await fetch(url, {
             credentials: 'same-origin',
@@ -126,6 +129,7 @@ function todayIsoDate(): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
+
     return `${y}-${m}-${day}`;
 }
 
@@ -133,6 +137,7 @@ function addLine(hit: SearchHit) {
     if (lines.value.some((l) => l.productId === hit.id)) {
         return;
     }
+
     lines.value.push({
         productId: hit.id,
         name: hit.name,
@@ -159,6 +164,7 @@ function runPrint() {
 
 function spgName(id: string): string {
     const g = props.sellingPriceGroups.find((x) => String(x.id) === id);
+
     return g?.name ?? '—';
 }
 </script>

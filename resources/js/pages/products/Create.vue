@@ -259,11 +259,13 @@ watch(
     () => [...selectedLocations.value].sort().join(','),
     () => {
         const sel = new Set(selectedLocations.value);
+
         for (const key of Object.keys(openingStockByLocationId)) {
             if (!sel.has(key)) {
                 delete openingStockByLocationId[key];
             }
         }
+
         for (const id of selectedLocations.value) {
             if (!(id in openingStockByLocationId)) {
                 openingStockByLocationId[id] = '';
@@ -457,8 +459,10 @@ function hydrateFromProduct(p: ProductEditPayload) {
 
     const subId = p.subcategory_id;
     const catId = p.category_id;
+
     if (subId != null) {
         const sub = props.categories.find((c) => c.id === subId);
+
         if (sub?.parent_id != null) {
             categoryId.value = String(sub.parent_id);
             subcategoryId.value = String(subId);
@@ -468,6 +472,7 @@ function hydrateFromProduct(p: ProductEditPayload) {
         }
     } else if (catId != null) {
         const cat = props.categories.find((c) => c.id === catId);
+
         if (cat?.is_sub_taxonomy && cat.parent_id != null) {
             categoryId.value = String(cat.parent_id);
             subcategoryId.value = String(catId);
@@ -484,6 +489,7 @@ function hydrateFromProduct(p: ProductEditPayload) {
     selectedLocations.value = locIds.map((id) => String(id));
 
     const stockMap: Record<string, string> = {};
+
     for (const row of p.location_stocks ?? []) {
         stockMap[String(row.business_location_id)] = row.quantity;
     }
@@ -495,6 +501,7 @@ function hydrateFromProduct(p: ProductEditPayload) {
     });
 
     const matrix = p.variation_matrix;
+
     if (Array.isArray(matrix) && matrix.length > 0) {
         const block = matrix[0] as {
             variation_template_id?: number | null;
@@ -504,6 +511,7 @@ function hydrateFromProduct(p: ProductEditPayload) {
         variationTemplateId.value =
             tid != null && tid !== 0 ? String(tid) : NONE;
         const vars = block.variations;
+
         if (Array.isArray(vars) && vars.length > 0) {
             variationRows.value = vars.map((v) => ({
                 sub_sku: String(v.sub_sku ?? ''),

@@ -64,8 +64,10 @@ function toDatetimeLocal(iso: string | null): string {
     if (!iso) {
         return '';
     }
+
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, '0');
+
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
@@ -73,8 +75,10 @@ function fromDatetimeLocal(v: string): string {
     if (!v.includes('T')) {
         return v;
     }
+
     const [date, time] = v.split('T');
     const t = (time ?? '00:00').slice(0, 5);
+
     return `${date} ${t}:00`;
 }
 
@@ -99,11 +103,13 @@ const form = useForm({
 function lineQty(index: number): number {
     const raw = form.lines[index]?.quantity ?? '0';
     const n = parseFloat(String(raw).replace(',', '.'));
+
     return Number.isFinite(n) ? n : 0;
 }
 
 function maxQty(index: number): number {
     const q = parseFloat(props.parent.lines[index]?.quantity ?? '0');
+
     return Number.isFinite(q) ? q : 0;
 }
 
@@ -112,26 +118,32 @@ const lineSubtotals = computed(() =>
         const q = Math.min(Math.max(0, lineQty(i)), maxQty(i));
         const unit = parseFloat(l.unit_price_exc_tax);
         const u = Number.isFinite(unit) ? unit : 0;
+
         return (q * u).toFixed(2);
     }),
 );
 
 const sumBeforeDiscount = computed(() => {
     let s = 0;
+
     for (let i = 0; i < lineSubtotals.value.length; i++) {
         s += parseFloat(lineSubtotals.value[i] ?? '0') || 0;
     }
+
     return s;
 });
 
 const discountValue = computed(() => {
     const amt = parseFloat(String(form.discount_amount)) || 0;
+
     if (form.discount_type === 'percentage') {
         return (sumBeforeDiscount.value * amt) / 100;
     }
+
     if (form.discount_type === 'fixed') {
         return Math.min(amt, sumBeforeDiscount.value);
     }
+
     return 0;
 });
 

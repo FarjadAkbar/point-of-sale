@@ -153,21 +153,27 @@ function displayCell(row: Row, col: ColId): string {
     if (col === 'invoice_no') {
         return row.invoice_no?.trim() ? row.invoice_no : '—';
     }
+
     if (col === 'transaction_date' && row.transaction_date) {
         return new Date(row.transaction_date).toLocaleString();
     }
+
     if (col === 'customer') {
         return row.customer?.display_name ?? '—';
     }
+
     if (col === 'business_location') {
         return row.business_location?.name ?? '—';
     }
+
     if (col === 'status') {
         return row.status;
     }
+
     if (col === 'final_total') {
         return row.final_total;
     }
+
     if (col === 'created_at' && row.created_at) {
         return new Date(row.created_at).toLocaleDateString();
     }

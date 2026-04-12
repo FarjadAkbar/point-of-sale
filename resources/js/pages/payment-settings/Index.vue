@@ -98,9 +98,11 @@ const editForm = useForm({
 
 const methodOptions = computed(() => {
     const o: { value: string; label: string }[] = [];
+
     if (props.paymentSettings.cash_enabled) {
         o.push({ value: 'cash', label: 'Cash' });
     }
+
     if (props.paymentSettings.bank_transfer_enabled) {
         o.push({ value: 'bank_transfer', label: 'Bank transfer' });
     }
@@ -155,6 +157,7 @@ function submitCreateAccount() {
 
 function submitEditAccount() {
     const row = editingAccount.value;
+
     if (!row) {
         return;
     }

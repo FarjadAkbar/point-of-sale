@@ -93,6 +93,7 @@ const productHits = ref<
 
 const debouncedProductSearch = useDebounceFn(async () => {
     const t = productSearch.value.trim();
+
     if (t.length < 1 || !form.from_business_location_id) {
         productHits.value = [];
 
@@ -165,6 +166,7 @@ function fromDatetimeLocal(v: string): string {
     if (!v.includes('T')) {
         return v;
     }
+
     const [date, time] = v.split('T');
     const t = (time ?? '00:00').slice(0, 5);
 

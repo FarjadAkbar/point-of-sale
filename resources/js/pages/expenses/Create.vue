@@ -71,6 +71,7 @@ function fromDatetimeLocal(v: string): string {
     if (!v.includes('T')) {
         return v;
     }
+
     const [date, time] = v.split('T');
     const t = (time ?? '00:00').slice(0, 5);
 
@@ -118,9 +119,11 @@ const form = useForm({
 
 const methodOptions = computed(() => {
     const o: { value: string; label: string }[] = [];
+
     if (props.paymentSettings.cash_enabled) {
         o.push({ value: 'cash', label: 'Cash' });
     }
+
     if (props.paymentSettings.bank_transfer_enabled) {
         o.push({ value: 'bank_transfer', label: 'Bank transfer' });
     }
@@ -132,6 +135,7 @@ const defaultMethod = computed(() => {
     if (props.paymentSettings.cash_enabled) {
         return 'cash';
     }
+
     if (props.paymentSettings.bank_transfer_enabled) {
         return 'bank_transfer';
     }
@@ -197,6 +201,7 @@ function removePaymentRow(i: number) {
     if (form.payments.length <= 1) {
         return;
     }
+
     form.payments.splice(i, 1);
 }
 
@@ -208,6 +213,7 @@ function resolvedCategoryId(): number | null {
     if (form.sub_category_id !== NONE) {
         return Number(form.sub_category_id);
     }
+
     if (form.parent_category_id !== NONE) {
         return Number(form.parent_category_id);
     }
