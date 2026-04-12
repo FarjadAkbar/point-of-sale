@@ -298,6 +298,9 @@ Route::prefix('{current_team}')
         Route::get('reports/profit-loss', [ProfitLossController::class, 'profitLoss'])
             ->name('reports.profit-loss');
 
+        Route::get('reports/today-profit', [ProfitLossController::class, 'todayProfit'])
+            ->name('reports.today-profit');
+
         Route::get('reports/purchase-sell', [PurchaseSellController::class, 'purchaseSell'])
             ->name('reports.purchase-sell');
 

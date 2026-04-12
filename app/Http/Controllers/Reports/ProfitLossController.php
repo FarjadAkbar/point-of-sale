@@ -8,6 +8,7 @@ use App\Models\BusinessLocation;
 use App\Models\Team;
 use App\Services\ProfitLossReportService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -50,6 +51,17 @@ class ProfitLossController extends Controller
             'profitByCustomer' => $report['profit_by_customer'],
             'profitByDay' => $report['profit_by_day'],
             'profitByServiceStaff' => $report['profit_by_service_staff'],
+        ]);
+    }
+
+    public function todayProfit(Team $current_team): JsonResponse
+    {
+        $today = Carbon::today();
+        $report = $this->profitLossReportService->build($current_team, $today, $today, null);
+
+        return response()->json([
+            'date' => $today->toDateString(),
+            'summary' => $report['summary'],
         ]);
     }
 }
