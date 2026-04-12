@@ -1,20 +1,35 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { ChevronDown, Printer } from 'lucide-vue-next';
+import { ChevronDown, ExternalLink, Printer } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import reportRoutes from '@/routes/reports';
 import type { Team } from '@/types';
 
+type ContactDetail = {
+    title: string;
+    contact_kind: 'customer' | 'supplier';
+    lines: Array<{ label: string; value: string }>;
+    manage_url: string;
+};
+
 type ReportRow = {
     kind: string;
     id: number;
     name: string;
-    url: string;
+    detail: ContactDetail;
     total_purchase: string;
     total_purchase_return: string;
     total_sale: string;
@@ -75,6 +90,21 @@ const customerGroupId = ref<string>(
 );
 const contactType = ref<string>(props.filters.contact_type || '');
 const contactKey = ref<string>(props.filters.contact_key ?? '');
+
+const detailOpen = ref(false);
+const selectedDetail = ref<ContactDetail | null>(null);
+
+function openContactDetail(row: ReportRow) {
+    selectedDetail.value = row.detail;
+    detailOpen.value = true;
+}
+
+function onDetailOpenChange(open: boolean) {
+    detailOpen.value = open;
+    if (!open) {
+        selectedDetail.value = null;
+    }
+}
 
 watch(
     () => props.filters,
@@ -257,14 +287,13 @@ function applyFilters() {
                                 class="border-b border-border/80 hover:bg-muted/20"
                             >
                                 <td class="px-2 py-2">
-                                    <a
-                                        :href="row.url"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="text-primary underline-offset-4 hover:underline print:hidden"
+                                    <button
+                                        type="button"
+                                        class="text-primary cursor-pointer text-left underline-offset-4 hover:underline print:hidden"
+                                        @click="openContactDetail(row)"
                                     >
                                         {{ row.name }}
-                                    </a>
+                                    </button>
                                     <span class="hidden print:inline">{{ row.name }}</span>
                                 </td>
                                 <td class="px-2 py-2 text-right tabular-nums">{{ currency(row.total_purchase) }}</td>
@@ -302,6 +331,33 @@ function applyFilters() {
                 </div>
             </CardContent>
         </Card>
+
+        <Dialog :open="detailOpen" @update:open="onDetailOpenChange">
+            <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+                <template v-if="selectedDetail">
+                    <DialogHeader>
+                        <DialogTitle>{{ selectedDetail.title }}</DialogTitle>
+                        <DialogDescription class="sr-only">Contact details for this report row.</DialogDescription>
+                    </DialogHeader>
+                    <dl class="grid gap-3 text-sm">
+                        <template v-for="(line, idx) in selectedDetail.lines" :key="idx">
+                            <div class="grid gap-0.5">
+                                <dt class="text-muted-foreground font-medium">{{ line.label }}</dt>
+                                <dd class="whitespace-pre-wrap break-words">{{ line.value }}</dd>
+                            </div>
+                        </template>
+                    </dl>
+                    <DialogFooter class="sm:justify-start">
+                        <Button variant="outline" as-child>
+                            <a :href="selectedDetail.manage_url" target="_blank" rel="noopener noreferrer">
+                                <ExternalLink class="mr-2 size-4" />
+                                Open in {{ selectedDetail.contact_kind === 'supplier' ? 'suppliers' : 'customers' }}
+                            </a>
+                        </Button>
+                    </DialogFooter>
+                </template>
+            </DialogContent>
+        </Dialog>
     </div>
 </template>
 

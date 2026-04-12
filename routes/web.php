@@ -15,10 +15,18 @@ use App\Http\Controllers\Purchases\PurchaseController;
 use App\Http\Controllers\Purchases\PurchaseReturnController;
 use App\Http\Controllers\Reports\CustomerGroupReportController;
 use App\Http\Controllers\Reports\CustomerSuppliersReportController;
+use App\Http\Controllers\Reports\ExpenseReportController;
 use App\Http\Controllers\Reports\ItemsReportController;
 use App\Http\Controllers\Reports\ProfitLossController;
+use App\Http\Controllers\Reports\RegisterReportController;
+use App\Http\Controllers\Reports\PurchasePaymentReportController;
 use App\Http\Controllers\Reports\PurchaseSellController;
+use App\Http\Controllers\Reports\SalesRepresentativeReportController;
+use App\Http\Controllers\Reports\SellPaymentReportController;
+use App\Http\Controllers\Reports\StockAdjustmentReportController;
+use App\Http\Controllers\Reports\StockReportController;
 use App\Http\Controllers\Reports\TaxReportController;
+use App\Http\Controllers\Reports\TrendingProductsReportController;
 use App\Http\Controllers\Sales\DiscountController;
 use App\Http\Controllers\Sales\SaleController;
 use App\Http\Controllers\Sales\SaleReturnController;
@@ -281,6 +289,21 @@ Route::prefix('{current_team}')
 
         Route::get('reports/items', [ItemsReportController::class, 'itemsReport'])
             ->name('reports.items');
+
+        Route::get('reports/purchase-payments', [PurchasePaymentReportController::class, 'purchasePayments'])
+            ->name('reports.purchase-payments');
+
+        Route::get('reports/sell-payments', [SellPaymentReportController::class, 'sellPayments'])
+            ->name('reports.sell-payments');
+
+        Route::get('reports/expense', [ExpenseReportController::class, 'expenseReport'])
+            ->name('reports.expense');
+
+        Route::get('reports/register', [RegisterReportController::class, 'registerReport'])
+            ->name('reports.register');
+
+        Route::get('reports/sales-representative', [SalesRepresentativeReportController::class, 'salesRepresentativeReport'])
+            ->name('reports.sales-representative');
 
         Route::resource('products', ProductController::class)->except(['show']);
     });

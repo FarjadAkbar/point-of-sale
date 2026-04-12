@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'team_id',
+    'created_by',
+    'sales_commission_agent_id',
     'customer_id',
     'business_location_id',
     'invoice_no',
@@ -56,6 +58,22 @@ class Sale extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * @return BelongsTo<SalesCommissionAgent, $this>
+     */
+    public function commissionAgent(): BelongsTo
+    {
+        return $this->belongsTo(SalesCommissionAgent::class, 'sales_commission_agent_id');
     }
 
     /**
@@ -120,7 +138,7 @@ class Sale extends Model
      */
     public function scopeForTeam($query, Team $team)
     {
-        return $query->where('team_id', $team->id);
+        return $query->where($query->qualifyColumn('team_id'), $team->id);
     }
 
     protected function casts(): array

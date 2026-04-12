@@ -383,6 +383,28 @@ const itemsReportUrl = computed(() =>
     page.props.currentTeam ? reportRoutes.items.url(page.props.currentTeam.slug) : '/',
 );
 
+const purchasePaymentsReportUrl = computed(() =>
+    page.props.currentTeam
+        ? reportRoutes.purchasePayments.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const sellPaymentsReportUrl = computed(() =>
+    page.props.currentTeam ? reportRoutes.sellPayments.url(page.props.currentTeam.slug) : '/',
+);
+
+const expenseReportUrl = computed(() =>
+    page.props.currentTeam ? reportRoutes.expense.url(page.props.currentTeam.slug) : '/',
+);
+
+const registerReportUrl = computed(() =>
+    page.props.currentTeam ? reportRoutes.register.url(page.props.currentTeam.slug) : '/',
+);
+
+const salesRepresentativeReportUrl = computed(() =>
+    page.props.currentTeam ? reportRoutes.salesRepresentative.url(page.props.currentTeam.slug) : '/',
+);
+
 const contactsOpen = ref(false);
 const purchasesOpen = ref(false);
 const stockTransfersOpen = ref(false);
@@ -589,6 +611,8 @@ watch(
             stockAdjustmentReportUrl.value,
             trendingProductsReportUrl.value,
             itemsReportUrl.value,
+            purchasePaymentsReportUrl.value,
+            sellPaymentsReportUrl.value,
         ] as const,
     () => {
         reportsOpen.value =
@@ -600,7 +624,9 @@ watch(
             isCurrentUrl(stockReportUrl.value) ||
             isCurrentUrl(stockAdjustmentReportUrl.value) ||
             isCurrentUrl(trendingProductsReportUrl.value) ||
-            isCurrentUrl(itemsReportUrl.value);
+            isCurrentUrl(itemsReportUrl.value) ||
+            isCurrentUrl(purchasePaymentsReportUrl.value) ||
+            isCurrentUrl(sellPaymentsReportUrl.value);
     },
     { immediate: true },
 );
@@ -1515,7 +1541,9 @@ watch(
                                         isCurrentUrl(stockReportUrl) ||
                                         isCurrentUrl(stockAdjustmentReportUrl) ||
                                         isCurrentUrl(trendingProductsReportUrl) ||
-                                        isCurrentUrl(itemsReportUrl)
+                                        isCurrentUrl(itemsReportUrl) ||
+                                        isCurrentUrl(purchasePaymentsReportUrl) ||
+                                        isCurrentUrl(sellPaymentsReportUrl)
                                     "
                                     tooltip="Reports"
                                 >
@@ -1624,6 +1652,28 @@ watch(
                                         >
                                             <Link :href="itemsReportUrl">
                                                 <span>Items report</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="isCurrentUrl(purchasePaymentsReportUrl)"
+                                        >
+                                            <Link :href="purchasePaymentsReportUrl">
+                                                <span>Purchase payment report</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="isCurrentUrl(sellPaymentsReportUrl)"
+                                        >
+                                            <Link :href="sellPaymentsReportUrl">
+                                                <span>Sell payment report</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>

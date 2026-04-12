@@ -53,6 +53,7 @@ class CustomerSuppliersReportService
         if ($includeCustomers) {
             $cq = Customer::query()
                 ->forTeam($team)
+                ->with('customerGroup')
                 ->whereIn('party_role', ['customer', 'both'])
                 ->orderBy('business_name')
                 ->orderBy('first_name');
@@ -74,9 +75,7 @@ class CustomerSuppliersReportService
                     'kind' => 'customer',
                     'id' => $cid,
                     'name' => $this->formatCustomerName($customer),
-                    'url' => route('customers.index', ['current_team' => $team->slug]).'?'.http_build_query([
-                        'search' => $customer->customer_code ?? $customer->display_name,
-                    ]),
+                    'detail' => $this->customerContactDetail($team, $customer),
                     'total_purchase' => $this->money(0.0),
                     'total_purchase_return' => $this->money(0.0),
                     'total_sale' => $this->money($saleTotal),
@@ -103,9 +102,7 @@ class CustomerSuppliersReportService
                     'kind' => 'supplier',
                     'id' => $sid,
                     'name' => $this->formatSupplierName($supplier),
-                    'url' => route('suppliers.index', ['current_team' => $team->slug]).'?'.http_build_query([
-                        'search' => $supplier->supplier_code ?? $supplier->display_name,
-                    ]),
+                    'detail' => $this->supplierContactDetail($team, $supplier),
                     'total_purchase' => $this->money($purchaseTotal),
                     'total_purchase_return' => $this->money(0.0),
                     'total_sale' => $this->money(0.0),
@@ -286,5 +283,130 @@ class CustomerSuppliersReportService
     protected function money(float $v): string
     {
         return number_format(round($v, 4), 4, '.', '');
+    }
+
+    /**
+     * @return array{title: string, contact_kind: string, lines: list<array{label: string, value: string}>, manage_url: string}
+     */
+    protected function customerContactDetail(Team $team, Customer $c): array
+    {
+        $addr = $this->formatAddress(
+            $c->address_line_1,
+            $c->address_line_2,
+            $c->city,
+            $c->state,
+            $c->zip_code,
+            $c->country,
+        );
+
+        $lines = $this->compactDetailLines([
+            'Customer code' => $c->customer_code,
+            'Display name' => $c->display_name,
+            'Entity type' => $c->entity_type,
+            'Business name' => $c->business_name,
+            'Name' => trim(implode(' ', array_filter([$c->first_name, $c->middle_name, $c->last_name]))),
+            'Customer group' => $c->customerGroup?->name,
+            'Party role' => $c->party_role,
+            'Mobile' => $c->mobile,
+            'Email' => $c->email,
+            'Tax number' => $c->tax_number,
+            'Address' => $addr,
+            'Opening balance' => $c->opening_balance !== null
+                ? number_format((float) $c->opening_balance, 2, '.', '')
+                : null,
+        ]);
+
+        return [
+            'title' => $this->formatCustomerName($c),
+            'contact_kind' => 'customer',
+            'lines' => $lines,
+            'manage_url' => route('customers.index', ['current_team' => $team->slug]).'?'.http_build_query([
+                'search' => $c->customer_code ?? $c->display_name,
+            ]),
+        ];
+    }
+
+    /**
+     * @return array{title: string, contact_kind: string, lines: list<array{label: string, value: string}>, manage_url: string}
+     */
+    protected function supplierContactDetail(Team $team, Supplier $s): array
+    {
+        $addr = $this->formatAddress(
+            $s->address_line_1,
+            $s->address_line_2,
+            $s->city,
+            $s->state,
+            $s->zip_code,
+            $s->country,
+        );
+
+        $lines = $this->compactDetailLines([
+            'Supplier code' => $s->supplier_code,
+            'Display name' => $s->display_name,
+            'Contact type' => $s->contact_type,
+            'Business name' => $s->business_name,
+            'Name' => trim(implode(' ', array_filter([$s->first_name, $s->middle_name, $s->last_name]))),
+            'Mobile' => $s->mobile,
+            'Email' => $s->email,
+            'Tax number' => $s->tax_number,
+            'Address' => $addr,
+            'Opening balance' => $s->opening_balance !== null
+                ? number_format((float) $s->opening_balance, 2, '.', '')
+                : null,
+        ]);
+
+        return [
+            'title' => $this->formatSupplierName($s),
+            'contact_kind' => 'supplier',
+            'lines' => $lines,
+            'manage_url' => route('suppliers.index', ['current_team' => $team->slug]).'?'.http_build_query([
+                'search' => $s->supplier_code ?? $s->display_name,
+            ]),
+        ];
+    }
+
+    /**
+     * @param  array<string, string|null>  $pairs
+     * @return list<array{label: string, value: string}>
+     */
+    protected function compactDetailLines(array $pairs): array
+    {
+        $out = [];
+        foreach ($pairs as $label => $value) {
+            if ($value === null) {
+                continue;
+            }
+            $value = is_string($value) ? trim($value) : (string) $value;
+            if ($value === '') {
+                continue;
+            }
+            $out[] = ['label' => $label, 'value' => $value];
+        }
+
+        return $out;
+    }
+
+    protected function formatAddress(
+        ?string $line1,
+        ?string $line2,
+        ?string $city,
+        ?string $state,
+        ?string $zip,
+        ?string $country,
+    ): ?string {
+        $parts = array_filter([
+            filled($line1) ? trim((string) $line1) : null,
+            filled($line2) ? trim((string) $line2) : null,
+            filled($city) || filled($state) || filled($zip)
+                ? trim(implode(', ', array_filter([$city, $state, $zip])))
+                : null,
+            filled($country) ? trim((string) $country) : null,
+        ]);
+
+        if ($parts === []) {
+            return null;
+        }
+
+        return implode("\n", $parts);
     }
 }

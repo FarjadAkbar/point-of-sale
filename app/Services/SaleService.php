@@ -53,6 +53,7 @@ class SaleService
 
             $sale = Sale::query()->create([
                 'team_id' => $team->id,
+                'created_by' => auth()->id(),
                 'customer_id' => (int) $data['customer_id'],
                 'business_location_id' => (int) $data['business_location_id'],
                 'invoice_no' => $data['invoice_no'] ?? null,

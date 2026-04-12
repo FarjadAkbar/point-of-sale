@@ -59,6 +59,6 @@ class SaleReturn extends Model
      */
     public function scopeForTeam($query, Team $team)
     {
-        return $query->where('team_id', $team->id);
+        return $query->where($query->qualifyColumn('team_id'), $team->id);
     }
 }

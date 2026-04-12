@@ -105,7 +105,7 @@ trait HasTeams
      */
     public function isCurrentTeam(Team $team): bool
     {
-        return $this->current_team_id === $team->id;
+        return (int) $this->current_team_id === (int) $team->id;
     }
 
     /**
