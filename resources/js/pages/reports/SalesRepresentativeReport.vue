@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ChevronDown, Printer } from 'lucide-vue-next';
+import { Printer } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+import StandardDataTable from '@/components/StandardDataTable.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { reportRowMatchesSearch } from '@/lib/reportTableSearch';
 import reportRoutes from '@/routes/reports';
 import type { Team } from '@/types';
 
@@ -90,7 +91,8 @@ defineOptions({
 const page = usePage();
 const teamSlug = computed(() => (page.props.currentTeam as Team | null)?.slug ?? '');
 
-const filtersOpen = ref(true);
+const search = ref('');
+const perPage = ref('25');
 const startDate = ref(props.filters.start_date);
 const endDate = ref(props.filters.end_date);
 const locationId = ref<string>(
@@ -99,6 +101,16 @@ const locationId = ref<string>(
 const userId = ref<string>(props.filters.user_id != null ? String(props.filters.user_id) : '');
 
 const activeTab = ref<'sales' | 'commission' | 'expenses'>('sales');
+
+const filteredSalesRows = computed(() =>
+    props.salesRows.filter((r) => reportRowMatchesSearch(r, search.value)),
+);
+const filteredCommissionRows = computed(() =>
+    props.commissionRows.filter((r) => reportRowMatchesSearch(r, search.value)),
+);
+const filteredExpenseRows = computed(() =>
+    props.expenseRows.filter((r) => reportRowMatchesSearch(r, search.value)),
+);
 
 watch(
     () => props.filters,
@@ -111,11 +123,17 @@ watch(
     { deep: true },
 );
 
+function triggerPrint(): void {
+    globalThis.print();
+}
+
 function currency(n: string) {
     const v = parseFloat(n);
+
     if (Number.isNaN(v)) {
         return '—';
     }
+
     return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(v);
 }
 
@@ -123,10 +141,13 @@ function formatDt(iso: string) {
     if (!iso) {
         return '—';
     }
+
     const d = new Date(iso);
+
     if (Number.isNaN(d.getTime())) {
         return '—';
     }
+
     return new Intl.DateTimeFormat(undefined, {
         dateStyle: 'short',
         timeStyle: 'short',
@@ -138,12 +159,15 @@ function applyFilters() {
         start_date: startDate.value,
         end_date: endDate.value,
     };
+
     if (locationId.value) {
         q.business_location_id = locationId.value;
     }
+
     if (userId.value) {
         q.user_id = userId.value;
     }
+
     router.get(reportRoutes.salesRepresentative.url(teamSlug.value), q, {
         preserveState: true,
         preserveScroll: true,
@@ -168,69 +192,6 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
             </p>
         </div>
 
-        <Collapsible v-model:open="filtersOpen" class="group print:hidden">
-            <Card>
-                <CollapsibleTrigger as-child>
-                    <CardHeader class="cursor-pointer select-none pb-2">
-                        <CardTitle class="text-base flex items-center gap-2">
-                            <ChevronDown
-                                class="size-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180"
-                            />
-                            Filters
-                        </CardTitle>
-                    </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                    <CardContent class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <div class="space-y-2">
-                            <Label for="sr-user">User</Label>
-                            <select
-                                id="sr-user"
-                                v-model="userId"
-                                class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                            >
-                                <option value="">All users</option>
-                                <option v-for="u in users" :key="u.id" :value="String(u.id)">
-                                    {{ u.name }}
-                                </option>
-                            </select>
-                        </div>
-                        <div class="space-y-2">
-                            <Label for="sr-loc">Business location</Label>
-                            <select
-                                id="sr-loc"
-                                v-model="locationId"
-                                class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                            >
-                                <option value="">All locations</option>
-                                <option v-for="loc in businessLocations" :key="loc.id" :value="String(loc.id)">
-                                    {{ loc.name }}
-                                </option>
-                            </select>
-                        </div>
-                        <div class="space-y-2 md:col-span-2 lg:col-span-1">
-                            <Label>Date range</Label>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <Input v-model="startDate" type="date" class="min-w-[10rem]" />
-                                <span class="text-muted-foreground text-sm">to</span>
-                                <Input v-model="endDate" type="date" class="min-w-[10rem]" />
-                            </div>
-                        </div>
-                        <div class="flex items-end md:col-span-2 lg:col-span-3">
-                            <Button type="button" @click="applyFilters">Apply filters</Button>
-                        </div>
-                    </CardContent>
-                </CollapsibleContent>
-            </Card>
-        </Collapsible>
-
-        <div class="flex justify-end print:hidden">
-            <Button variant="outline" type="button" @click="() => window.print()">
-                <Printer class="mr-2 size-4" />
-                Print
-            </Button>
-        </div>
-
         <Card>
             <CardHeader class="pb-2">
                 <CardTitle class="text-base">Summary</CardTitle>
@@ -251,39 +212,88 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
             </CardContent>
         </Card>
 
-        <Card>
-            <CardContent class="pt-6">
-                <div class="print:hidden mb-4 flex flex-wrap gap-2 border-b border-border pb-2">
-                    <Button
-                        type="button"
-                        size="sm"
-                        :variant="activeTab === 'sales' ? 'default' : 'outline'"
-                        @click="activeTab = 'sales'"
+        <StandardDataTable
+            v-model:search="search"
+            v-model:per-page="perPage"
+            class="print:hidden"
+            search-placeholder="Search table…"
+            :show-pagination="false"
+            :show-per-page="false"
+        >
+            <template #filters>
+                <div class="space-y-2">
+                    <Label for="srr-user">User</Label>
+                    <select
+                        id="srr-user"
+                        v-model="userId"
+                        class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                     >
-                        Sales added
-                    </Button>
-                    <Button
-                        type="button"
-                        size="sm"
-                        :variant="activeTab === 'commission' ? 'default' : 'outline'"
-                        @click="activeTab = 'commission'"
-                    >
-                        Sales with commission
-                    </Button>
-                    <Button
-                        type="button"
-                        size="sm"
-                        :variant="activeTab === 'expenses' ? 'default' : 'outline'"
-                        @click="activeTab = 'expenses'"
-                    >
-                        Expenses
-                    </Button>
+                        <option value="">All users</option>
+                        <option v-for="u in users" :key="u.id" :value="String(u.id)">
+                            {{ u.name }}
+                        </option>
+                    </select>
                 </div>
-
-                <div v-show="activeTab === 'sales'" class="overflow-x-auto">
+                <div class="space-y-2">
+                    <Label for="srr-loc">Business location</Label>
+                    <select
+                        id="srr-loc"
+                        v-model="locationId"
+                        class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                    >
+                        <option value="">All locations</option>
+                        <option v-for="loc in businessLocations" :key="loc.id" :value="String(loc.id)">
+                            {{ loc.name }}
+                        </option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <Label>Date range</Label>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Input v-model="startDate" type="date" class="min-w-[10rem]" />
+                        <span class="text-muted-foreground text-sm">to</span>
+                        <Input v-model="endDate" type="date" class="min-w-[10rem]" />
+                    </div>
+                </div>
+                <div class="pt-1">
+                    <Button type="button" size="sm" class="w-full" @click="applyFilters">Apply filters</Button>
+                </div>
+            </template>
+            <template #toolbar-actions>
+                <Button variant="outline" type="button" size="sm" @click="triggerPrint">
+                    <Printer class="mr-2 size-4" />
+                    Print
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    :variant="activeTab === 'sales' ? 'default' : 'outline'"
+                    @click="activeTab = 'sales'"
+                >
+                    Sales added
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    :variant="activeTab === 'commission' ? 'default' : 'outline'"
+                    @click="activeTab = 'commission'"
+                >
+                    Sales with commission
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    :variant="activeTab === 'expenses' ? 'default' : 'outline'"
+                    @click="activeTab = 'expenses'"
+                >
+                    Expenses
+                </Button>
+            </template>
+            <div class="space-y-4">
+                <div v-show="activeTab === 'sales'" class="rounded-md border border-border overflow-x-auto">
                     <table class="w-full min-w-[720px] border-collapse text-sm">
                         <thead>
-                            <tr class="border-b">
+                            <tr class="border-b border-border bg-muted/40">
                                 <th class="p-2 text-left font-medium">Date</th>
                                 <th class="p-2 text-left font-medium">Invoice no.</th>
                                 <th class="p-2 text-left font-medium">Customer</th>
@@ -298,7 +308,10 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
                             <tr v-if="salesRows.length === 0">
                                 <td colspan="8" class="text-muted-foreground p-4 text-center">No data available in table</td>
                             </tr>
-                            <tr v-for="(r, i) in salesRows" :key="i" class="border-b border-border/60">
+                            <tr v-else-if="filteredSalesRows.length === 0">
+                                <td colspan="8" class="text-muted-foreground p-4 text-center">No rows match your search.</td>
+                            </tr>
+                            <tr v-for="(r, i) in filteredSalesRows" :key="i" class="border-b border-border/60">
                                 <td class="p-2 whitespace-nowrap">{{ formatDt(r.date) }}</td>
                                 <td class="p-2">
                                     <Link :href="r.sale_url" class="text-primary hover:underline">{{ r.invoice_no }}</Link>
@@ -318,7 +331,7 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
                             </tr>
                         </tbody>
                         <tfoot v-if="salesRows.length > 0">
-                            <tr class="border-t font-medium">
+                            <tr class="border-t font-medium bg-muted/50">
                                 <td colspan="4" class="p-2">Total</td>
                                 <td class="p-2 whitespace-pre-line text-left text-xs">{{ salesFooter.payment_status_html }}</td>
                                 <td class="p-2 text-right tabular-nums">{{ currency(salesFooter.total_amount) }}</td>
@@ -329,10 +342,10 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
                     </table>
                 </div>
 
-                <div v-show="activeTab === 'commission'" class="overflow-x-auto">
+                <div v-show="activeTab === 'commission'" class="rounded-md border border-border overflow-x-auto">
                     <table class="w-full min-w-[720px] border-collapse text-sm">
                         <thead>
-                            <tr class="border-b">
+                            <tr class="border-b border-border bg-muted/40">
                                 <th class="p-2 text-left font-medium">Date</th>
                                 <th class="p-2 text-left font-medium">Invoice no.</th>
                                 <th class="p-2 text-left font-medium">Customer</th>
@@ -347,7 +360,10 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
                             <tr v-if="commissionRows.length === 0">
                                 <td colspan="8" class="text-muted-foreground p-4 text-center">No data available in table</td>
                             </tr>
-                            <tr v-for="(r, i) in commissionRows" :key="i" class="border-b border-border/60">
+                            <tr v-else-if="filteredCommissionRows.length === 0">
+                                <td colspan="8" class="text-muted-foreground p-4 text-center">No rows match your search.</td>
+                            </tr>
+                            <tr v-for="(r, i) in filteredCommissionRows" :key="i" class="border-b border-border/60">
                                 <td class="p-2 whitespace-nowrap">{{ formatDt(r.date) }}</td>
                                 <td class="p-2">
                                     <Link :href="r.sale_url" class="text-primary hover:underline">{{ r.invoice_no }}</Link>
@@ -367,7 +383,7 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
                             </tr>
                         </tbody>
                         <tfoot v-if="commissionRows.length > 0">
-                            <tr class="border-t font-medium">
+                            <tr class="border-t font-medium bg-muted/50">
                                 <td colspan="4" class="p-2">Total</td>
                                 <td class="p-2 whitespace-pre-line text-left text-xs">
                                     {{ commissionFooter.payment_status_html }}
@@ -380,10 +396,10 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
                     </table>
                 </div>
 
-                <div v-show="activeTab === 'expenses'" class="overflow-x-auto">
+                <div v-show="activeTab === 'expenses'" class="rounded-md border border-border overflow-x-auto">
                     <table class="w-full min-w-[880px] border-collapse text-sm">
                         <thead>
-                            <tr class="border-b">
+                            <tr class="border-b border-border bg-muted/40">
                                 <th class="p-2 text-left font-medium">Date</th>
                                 <th class="p-2 text-left font-medium">Reference no.</th>
                                 <th class="p-2 text-left font-medium">Expense category</th>
@@ -398,7 +414,10 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
                             <tr v-if="expenseRows.length === 0">
                                 <td colspan="8" class="text-muted-foreground p-4 text-center">No data available in table</td>
                             </tr>
-                            <tr v-for="(r, i) in expenseRows" :key="i" class="border-b border-border/60">
+                            <tr v-else-if="filteredExpenseRows.length === 0">
+                                <td colspan="8" class="text-muted-foreground p-4 text-center">No rows match your search.</td>
+                            </tr>
+                            <tr v-for="(r, i) in filteredExpenseRows" :key="i" class="border-b border-border/60">
                                 <td class="p-2 whitespace-nowrap">{{ formatDt(r.date) }}</td>
                                 <td class="p-2">{{ r.ref_no }}</td>
                                 <td class="p-2">{{ r.category }}</td>
@@ -414,7 +433,7 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
                             </tr>
                         </tbody>
                         <tfoot v-if="expenseRows.length > 0">
-                            <tr class="border-t font-medium">
+                            <tr class="border-t font-medium bg-muted/50">
                                 <td colspan="4" class="p-2">Total</td>
                                 <td class="p-2 text-left text-xs">{{ expenseFooter.payment_status_html }}</td>
                                 <td class="p-2 text-right tabular-nums">{{ currency(expenseFooter.total_amount) }}</td>
@@ -423,8 +442,8 @@ function paymentBadgeVariant(status: string): 'default' | 'secondary' {
                         </tfoot>
                     </table>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </StandardDataTable>
     </div>
 </template>
 

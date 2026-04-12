@@ -60,6 +60,10 @@ const props = withDefaults(
         tableWrapperId?: string;
         tableWrapperClass?: string;
         showPagination?: boolean;
+        /** When false, hides the rows-per-page control (e.g. client-only report tables). */
+        showPerPage?: boolean;
+        /** When false, hides the search input (filters dropdown / toolbar still available). */
+        showSearch?: boolean;
     }>(),
     {
         searchPlaceholder: 'Search…',
@@ -71,6 +75,8 @@ const props = withDefaults(
         links: () => [],
         tableWrapperClass: 'overflow-x-auto',
         showPagination: true,
+        showPerPage: true,
+        showSearch: true,
     },
 );
 
@@ -116,7 +122,7 @@ function onPage(url: string | null) {
             class="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between"
         >
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                <div class="relative min-w-[12rem] max-w-xl flex-1">
+                <div v-if="showSearch" class="relative min-w-[12rem] max-w-xl flex-1">
                     <Search
                         class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
                         aria-hidden="true"
@@ -163,7 +169,7 @@ function onPage(url: string | null) {
                 <div class="flex flex-wrap items-center gap-2">
                     <slot name="toolbar-actions" />
                 </div>
-                <div class="inline-flex">
+                <div v-if="showPerPage" class="inline-flex">
                     <Select v-model="perPage">
                         <SelectTrigger
                             class="h-9 w-[4.25rem]"

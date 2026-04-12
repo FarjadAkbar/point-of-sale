@@ -238,7 +238,8 @@ watch(
 
                 <template v-else>
                     <Form
-                        v-bind="confirm.form()"
+                        :action="confirm.url()"
+                        method="post"
                         error-bag="confirmTwoFactorAuthentication"
                         reset-on-error
                         @finish="code = ''"

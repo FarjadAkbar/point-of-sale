@@ -31,7 +31,8 @@ defineProps<{
     </div>
 
     <Form
-        v-bind="send.form()"
+        :action="send.url()"
+        method="post"
         class="space-y-6 text-center"
         v-slot="{ processing }"
     >
@@ -40,7 +41,12 @@ defineProps<{
             Resend verification email
         </Button>
 
-        <TextLink :href="logout()" as="button" class="mx-auto block text-sm">
+        <TextLink
+            :href="logout.url()"
+            method="post"
+            as="button"
+            class="mx-auto block text-sm"
+        >
             Log out
         </TextLink>
     </Form>

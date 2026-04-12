@@ -3,6 +3,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import { Plus } from 'lucide-vue-next';
 import { computed, nextTick, ref, watch } from 'vue';
+import StandardDataTable from '@/components/StandardDataTable.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -60,6 +61,12 @@ type Option = { id: number; name: string };
 
 const props = defineProps<{
     discounts: Paginated;
+    filters: {
+        search: string;
+        sort: string;
+        direction: string;
+        per_page: number;
+    };
     brands: Option[];
     productCategories: Option[];
     businessLocations: Option[];
@@ -85,6 +92,121 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+
+const listSearch = ref(props.filters.search ?? '');
+const listPerPage = ref(String(props.filters.per_page ?? 15));
+
+type DiscountColId =
+    | 'name'
+    | 'location'
+    | 'priority'
+    | 'type'
+    | 'amount'
+    | 'products'
+    | 'active';
+
+const discountListColumns: {
+    id: DiscountColId;
+    label: string;
+    sortKey: string | null;
+}[] = [
+    { id: 'name', label: 'Name', sortKey: 'name' },
+    { id: 'location', label: 'Location', sortKey: null },
+    { id: 'priority', label: 'Priority', sortKey: 'priority' },
+    { id: 'type', label: 'Type', sortKey: null },
+    { id: 'amount', label: 'Amount', sortKey: 'discount_amount' },
+    { id: 'products', label: 'Products', sortKey: null },
+    { id: 'active', label: 'Active', sortKey: 'is_active' },
+];
+
+function discountIndexQuery(
+    overrides: Record<string, string | number | undefined> = {},
+): Record<string, string> {
+    const q: Record<string, string> = {
+        search: listSearch.value,
+        sort: props.filters.sort,
+        direction: props.filters.direction,
+        per_page: String(overrides.per_page ?? props.filters.per_page),
+    };
+
+    for (const [k, v] of Object.entries(overrides)) {
+        if (v !== undefined && v !== '') {
+            q[k] = String(v);
+        }
+    }
+
+    return q;
+}
+
+function visitDiscountIndex(overrides: Record<string, string | number> = {}) {
+    router.get(
+        salesRoutes.discounts.index.url(teamSlug.value),
+        discountIndexQuery(overrides),
+        { preserveState: true, replace: true },
+    );
+}
+
+const debouncedDiscountIndexSearch = useDebounceFn(
+    () => visitDiscountIndex(),
+    350,
+);
+watch(listSearch, () => debouncedDiscountIndexSearch());
+watch(listPerPage, (v) => visitDiscountIndex({ per_page: Number(v) }));
+
+function toggleDiscountSort(sortKey: string) {
+    const isCurrent = props.filters.sort === sortKey;
+    const dir =
+        isCurrent && props.filters.direction === 'asc' ? 'desc' : 'asc';
+    router.get(
+        salesRoutes.discounts.index.url(teamSlug.value),
+        discountIndexQuery({ sort: sortKey, direction: dir }),
+        { preserveState: true, replace: true },
+    );
+}
+
+function discountSortIndicator(sortKey: string | null): string {
+    if (!sortKey || props.filters.sort !== sortKey) {
+        return '';
+    }
+
+    return props.filters.direction === 'asc' ? ' ↑' : ' ↓';
+}
+
+function typeLabel(t: string): string {
+    return t === 'percentage' ? '%' : t === 'fixed' ? 'Fixed' : t;
+}
+
+function displayDiscountCell(row: DiscountRow, col: DiscountColId): string {
+    if (col === 'name') {
+        return row.name;
+    }
+
+    if (col === 'location') {
+        return row.business_location?.name ?? '—';
+    }
+
+    if (col === 'priority') {
+        return String(row.priority);
+    }
+
+    if (col === 'type') {
+        return typeLabel(row.discount_type);
+    }
+
+    if (col === 'amount') {
+        return row.discount_amount;
+    }
+
+    if (col === 'products') {
+        return `${row.products_count} selected`;
+    }
+
+    if (col === 'active') {
+        return row.is_active ? 'Yes' : 'No';
+    }
+
+    return '—';
+}
 
 const modalOpen = ref(false);
 
@@ -160,6 +282,7 @@ async function searchProducts() {
     }
 
     productSearchLoading.value = true;
+
     try {
         const url = productRoutes.search.url(teamSlug.value, {
             query: {
@@ -193,9 +316,11 @@ function toLaravelDateTime(dtLocal: string): string | null {
     if (!dtLocal.trim()) {
         return null;
     }
+
     if (!dtLocal.includes('T')) {
         return dtLocal;
     }
+
     const [date, time] = dtLocal.split('T');
     const t = (time ?? '00:00').slice(0, 5);
 
@@ -206,6 +331,7 @@ function optionalFk(v: string): number | null {
     if (v === '' || v === SELECT_NONE) {
         return null;
     }
+
     const n = Number(v);
 
     return Number.isFinite(n) ? n : null;
@@ -242,10 +368,6 @@ function goToPage(url: string | null) {
         router.visit(url, { preserveState: true, replace: true });
     }
 }
-
-function typeLabel(t: string): string {
-    return t === 'percentage' ? '%' : t === 'fixed' ? 'Fixed' : t;
-}
 </script>
 
 <template>
@@ -266,17 +388,50 @@ function typeLabel(t: string): string {
             </Button>
         </div>
 
-        <div class="overflow-x-auto rounded-lg border border-border">
+        <StandardDataTable
+            v-model:search="listSearch"
+            v-model:per-page="listPerPage"
+            search-placeholder="Name, location, brand…"
+            :per-page-options="[10, 15, 25, 50]"
+            :paginator="discounts"
+            @page="goToPage"
+        >
             <table class="w-full min-w-[880px] border-collapse text-sm">
                 <thead>
-                    <tr class="border-b border-border bg-muted/40">
-                        <th class="px-3 py-2 text-left font-medium">Name</th>
-                        <th class="px-3 py-2 text-left font-medium">Location</th>
-                        <th class="px-3 py-2 text-center font-medium">Priority</th>
-                        <th class="px-3 py-2 text-left font-medium">Type</th>
-                        <th class="px-3 py-2 text-right font-medium">Amount</th>
-                        <th class="px-3 py-2 text-left font-medium">Products</th>
-                        <th class="px-3 py-2 text-center font-medium">Active</th>
+                    <tr class="border-b border-border">
+                        <th
+                            v-for="col in discountListColumns"
+                            :key="col.id"
+                            class="bg-muted/40 px-3 py-2 font-medium"
+                            :class="{
+                                'text-left':
+                                    col.id !== 'priority' &&
+                                    col.id !== 'active' &&
+                                    col.id !== 'amount',
+                                'text-center':
+                                    col.id === 'priority' || col.id === 'active',
+                                'text-right': col.id === 'amount',
+                            }"
+                        >
+                            <button
+                                v-if="col.sortKey"
+                                type="button"
+                                class="inline-flex items-center gap-1 hover:text-primary"
+                                :class="{
+                                    'mx-auto flex':
+                                        col.id === 'priority' ||
+                                        col.id === 'active',
+                                    'float-right': col.id === 'amount',
+                                }"
+                                @click="toggleDiscountSort(col.sortKey)"
+                            >
+                                {{ col.label
+                                }}<span class="text-xs text-muted-foreground">{{
+                                    discountSortIndicator(col.sortKey)
+                                }}</span>
+                            </button>
+                            <span v-else>{{ col.label }}</span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -285,25 +440,24 @@ function typeLabel(t: string): string {
                         :key="row.id"
                         class="border-b border-border/80 hover:bg-muted/20"
                     >
-                        <td class="px-3 py-2 font-medium">{{ row.name }}</td>
-                        <td class="px-3 py-2">
-                            {{ row.business_location?.name ?? '—' }}
-                        </td>
-                        <td class="px-3 py-2 text-center">{{ row.priority }}</td>
-                        <td class="px-3 py-2">{{ typeLabel(row.discount_type) }}</td>
-                        <td class="px-3 py-2 text-right">
-                            {{ row.discount_amount }}
-                        </td>
-                        <td class="px-3 py-2 text-muted-foreground">
-                            {{ row.products_count }} selected
-                        </td>
-                        <td class="px-3 py-2 text-center">
-                            {{ row.is_active ? 'Yes' : 'No' }}
+                        <td
+                            v-for="col in discountListColumns"
+                            :key="col.id"
+                            class="px-3 py-2"
+                            :class="{
+                                'font-medium': col.id === 'name',
+                                'text-center':
+                                    col.id === 'priority' || col.id === 'active',
+                                'text-right': col.id === 'amount',
+                                'text-muted-foreground': col.id === 'products',
+                            }"
+                        >
+                            {{ displayDiscountCell(row, col.id) }}
                         </td>
                     </tr>
                     <tr v-if="!(discounts?.data?.length)">
                         <td
-                            colspan="7"
+                            :colspan="discountListColumns.length"
                             class="text-muted-foreground px-3 py-8 text-center"
                         >
                             No discounts yet. Use “Add discount” to create one.
@@ -311,26 +465,7 @@ function typeLabel(t: string): string {
                     </tr>
                 </tbody>
             </table>
-        </div>
-
-        <div
-            v-if="discounts.last_page > 1"
-            class="flex flex-wrap items-center justify-center gap-1"
-        >
-            <Button
-                v-for="(link, i) in discounts.links"
-                :key="i"
-                type="button"
-                variant="outline"
-                size="sm"
-                :disabled="!link.url"
-                class="min-w-8"
-                :class="link.active ? 'border-primary' : ''"
-                @click="goToPage(link.url)"
-            >
-                <span v-html="link.label" />
-            </Button>
-        </div>
+        </StandardDataTable>
     </div>
 
     <Dialog v-model:open="modalOpen">
@@ -579,7 +714,8 @@ function typeLabel(t: string): string {
                         <Checkbox
                             :checked="form.applicable_in_customer_groups"
                             @update:checked="
-                                (v) => (form.applicable_in_customer_groups = !!v)
+                                (v: boolean | 'indeterminate') =>
+                                    (form.applicable_in_customer_groups = !!v)
                             "
                         />
                         Apply in customer groups
@@ -589,7 +725,10 @@ function typeLabel(t: string): string {
                     >
                         <Checkbox
                             :checked="form.is_active"
-                            @update:checked="(v) => (form.is_active = !!v)"
+                            @update:checked="
+                                (v: boolean | 'indeterminate') =>
+                                    (form.is_active = !!v)
+                            "
                         />
                         Is active
                     </label>

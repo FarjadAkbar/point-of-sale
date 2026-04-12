@@ -49,7 +49,8 @@ const handleOpenChange = (nextOpen: boolean) => {
         <DialogContent>
             <Form
                 :key="formKey"
-                v-bind="destroy.form(props.team.slug)"
+                :action="destroy.url(props.team.slug)"
+                method="delete"
                 class="space-y-6"
                 v-slot="{ errors, processing }"
                 @success="handleOpenChange(false)"

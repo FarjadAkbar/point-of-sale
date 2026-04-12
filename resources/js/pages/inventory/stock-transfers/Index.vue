@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
+import { computed, ref, watch } from 'vue';
+import StandardDataTable from '@/components/StandardDataTable.vue';
 import { Button } from '@/components/ui/button';
 import stockTransferRoutes from '@/routes/stock-transfers';
 import type { Team } from '@/types';
-
-const page = usePage();
-const teamSlug = computed(
-    () => (page.props.currentTeam as Team | null)?.slug ?? '',
-);
 
 type Row = {
     id: number;
@@ -24,11 +21,21 @@ type Paginated = {
     data: Row[];
     current_page: number;
     last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
     links: Array<{ url: string | null; label: string; active: boolean }>;
 };
 
-defineProps<{
+const props = defineProps<{
     transfers: Paginated;
+    filters: {
+        search: string;
+        sort: string;
+        direction: string;
+        per_page: number;
+    };
 }>();
 
 defineOptions({
@@ -42,10 +49,113 @@ defineOptions({
     }),
 });
 
+const page = usePage();
+const teamSlug = computed(
+    () => (page.props.currentTeam as Team | null)?.slug ?? '',
+);
+
+const search = ref(props.filters.search ?? '');
+const perPage = ref(String(props.filters.per_page ?? 15));
+
+type ColId =
+    | 'ref_no'
+    | 'transaction_date'
+    | 'from'
+    | 'to'
+    | 'status'
+    | 'final_total';
+
+const allColumns: { id: ColId; label: string; sortKey: string | null }[] = [
+    { id: 'ref_no', label: 'Reference', sortKey: null },
+    { id: 'transaction_date', label: 'Date', sortKey: 'transaction_date' },
+    { id: 'from', label: 'From', sortKey: null },
+    { id: 'to', label: 'To', sortKey: null },
+    { id: 'status', label: 'Status', sortKey: 'status' },
+    { id: 'final_total', label: 'Total', sortKey: 'final_total' },
+];
+
+function indexQuery(
+    overrides: Record<string, string | number | undefined> = {},
+): Record<string, string> {
+    const q: Record<string, string> = {
+        search: search.value,
+        sort: props.filters.sort,
+        direction: props.filters.direction,
+        per_page: String(overrides.per_page ?? props.filters.per_page),
+    };
+
+    for (const [k, v] of Object.entries(overrides)) {
+        if (v !== undefined && v !== '') {
+            q[k] = String(v);
+        }
+    }
+
+    return q;
+}
+
+function visitWithFilters(overrides: Record<string, string | number> = {}) {
+    router.get(
+        stockTransferRoutes.index.url(teamSlug.value),
+        indexQuery(overrides),
+        { preserveState: true, replace: true },
+    );
+}
+
+const debouncedSearch = useDebounceFn(() => visitWithFilters(), 350);
+watch(search, () => debouncedSearch());
+watch(perPage, (v) => visitWithFilters({ per_page: Number(v) }));
+
+function toggleSort(sortKey: string) {
+    const isCurrent = props.filters.sort === sortKey;
+    const dir =
+        isCurrent && props.filters.direction === 'asc' ? 'desc' : 'asc';
+    router.get(
+        stockTransferRoutes.index.url(teamSlug.value),
+        indexQuery({ sort: sortKey, direction: dir }),
+        { preserveState: true, replace: true },
+    );
+}
+
 function goToPage(url: string | null) {
     if (url) {
         router.visit(url, { preserveState: true, replace: true });
     }
+}
+
+function displayCell(row: Row, col: ColId): string {
+    if (col === 'ref_no') {
+        return row.ref_no?.trim() ? row.ref_no : '—';
+    }
+
+    if (col === 'transaction_date' && row.transaction_date) {
+        return new Date(row.transaction_date).toLocaleString();
+    }
+
+    if (col === 'from') {
+        return row.from_location?.name ?? '—';
+    }
+
+    if (col === 'to') {
+        return row.to_location?.name ?? '—';
+    }
+
+    if (col === 'status') {
+        return row.status.replace('_', ' ');
+    }
+
+    if (col === 'final_total') {
+        return row.final_total;
+    }
+
+    return '—';
+}
+
+function sortIndicator(sortKey: string | null): string {
+    if (!sortKey || props.filters.sort !== sortKey) {
+        return '';
+    }
+
+    return props.filters.direction === 'asc' ? ' ↑' : ' ↓';
 }
 </script>
 
@@ -53,7 +163,9 @@ function goToPage(url: string | null) {
     <Head title="Stock transfers" />
 
     <div class="flex flex-1 flex-col gap-4 p-4 md:p-6">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div
+            class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+        >
             <div>
                 <h1 class="text-2xl font-semibold tracking-tight">
                     List stock transfer
@@ -69,16 +181,35 @@ function goToPage(url: string | null) {
             </Button>
         </div>
 
-        <div class="overflow-x-auto rounded-lg border border-border">
+        <StandardDataTable
+            v-model:search="search"
+            v-model:per-page="perPage"
+            search-placeholder="Reference, status, location…"
+            :per-page-options="[10, 15, 25, 50]"
+            :paginator="transfers"
+            @page="goToPage"
+        >
             <table class="w-full min-w-[720px] border-collapse text-sm">
                 <thead>
-                    <tr class="border-b border-border bg-muted/40">
-                        <th class="px-3 py-2 text-left font-medium">Reference</th>
-                        <th class="px-3 py-2 text-left font-medium">Date</th>
-                        <th class="px-3 py-2 text-left font-medium">From</th>
-                        <th class="px-3 py-2 text-left font-medium">To</th>
-                        <th class="px-3 py-2 text-left font-medium">Status</th>
-                        <th class="px-3 py-2 text-right font-medium">Total</th>
+                    <tr class="border-b border-border">
+                        <th
+                            v-for="col in allColumns"
+                            :key="col.id"
+                            class="bg-muted/40 px-3 py-2 text-left font-medium"
+                        >
+                            <button
+                                v-if="col.sortKey"
+                                type="button"
+                                class="inline-flex items-center gap-1 hover:text-primary"
+                                @click="toggleSort(col.sortKey)"
+                            >
+                                {{ col.label
+                                }}<span class="text-xs text-muted-foreground">{{
+                                    sortIndicator(col.sortKey)
+                                }}</span>
+                            </button>
+                            <span v-else>{{ col.label }}</span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -87,28 +218,21 @@ function goToPage(url: string | null) {
                         :key="row.id"
                         class="border-b border-border/80 hover:bg-muted/20"
                     >
-                        <td class="px-3 py-2">
-                            {{ row.ref_no?.trim() ? row.ref_no : '—' }}
+                        <td
+                            v-for="col in allColumns"
+                            :key="col.id"
+                            class="px-3 py-2 whitespace-nowrap"
+                            :class="{
+                                'text-right': col.id === 'final_total',
+                                capitalize: col.id === 'status',
+                            }"
+                        >
+                            {{ displayCell(row, col.id) }}
                         </td>
-                        <td class="px-3 py-2 whitespace-nowrap">
-                            {{
-                                row.transaction_date
-                                    ? new Date(row.transaction_date).toLocaleString()
-                                    : '—'
-                            }}
-                        </td>
-                        <td class="px-3 py-2">
-                            {{ row.from_location?.name ?? '—' }}
-                        </td>
-                        <td class="px-3 py-2">
-                            {{ row.to_location?.name ?? '—' }}
-                        </td>
-                        <td class="px-3 py-2 capitalize">{{ row.status.replace('_', ' ') }}</td>
-                        <td class="px-3 py-2 text-right">{{ row.final_total }}</td>
                     </tr>
                     <tr v-if="!(transfers?.data?.length)">
                         <td
-                            colspan="6"
+                            :colspan="allColumns.length"
                             class="text-muted-foreground px-3 py-8 text-center"
                         >
                             No stock transfers yet.
@@ -116,24 +240,6 @@ function goToPage(url: string | null) {
                     </tr>
                 </tbody>
             </table>
-        </div>
-
-        <div
-            v-if="transfers.last_page > 1"
-            class="flex flex-wrap justify-center gap-1"
-        >
-            <Button
-                v-for="(link, i) in transfers.links"
-                :key="i"
-                type="button"
-                variant="outline"
-                size="sm"
-                :disabled="!link.url"
-                :class="link.active ? 'border-primary' : ''"
-                @click="goToPage(link.url)"
-            >
-                <span v-html="link.label" />
-            </Button>
-        </div>
+        </StandardDataTable>
     </div>
 </template>

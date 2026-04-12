@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'team_id',
@@ -52,6 +53,14 @@ class BusinessLocation extends Model
     public function defaultSellingPriceGroup(): BelongsTo
     {
         return $this->belongsTo(SellingPriceGroup::class, 'default_selling_price_group_id');
+    }
+
+    /**
+     * @return HasMany<RestaurantTable, $this>
+     */
+    public function restaurantTables(): HasMany
+    {
+        return $this->hasMany(RestaurantTable::class);
     }
 
     /**

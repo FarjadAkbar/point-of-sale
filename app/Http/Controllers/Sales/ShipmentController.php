@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Sales\ShipmentIndexRequest;
 use App\Models\Sale;
 use App\Models\Team;
 use Inertia\Inertia;
@@ -10,15 +11,41 @@ use Inertia\Response;
 
 class ShipmentController extends Controller
 {
-    public function index(Team $current_team): Response
+    public function index(ShipmentIndexRequest $request, Team $current_team): Response
     {
+        $filters = $request->filters();
         $query = Sale::query()
             ->forTeam($current_team)
             ->where('status', 'final')
-            ->with(['customer', 'businessLocation'])
-            ->orderByDesc('transaction_date');
+            ->with(['customer', 'businessLocation']);
 
-        $paginator = $query->paginate(20)->withQueryString();
+        if (! empty($filters['search'])) {
+            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']).'%';
+            $query->where(function ($q) use ($term) {
+                $q->where('invoice_no', 'like', $term)
+                    ->orWhere('shipping_status', 'like', $term)
+                    ->orWhere('delivered_to', 'like', $term)
+                    ->orWhere('delivery_person', 'like', $term)
+                    ->orWhereHas('customer', function ($c) use ($term) {
+                        $c->where('business_name', 'like', $term)
+                            ->orWhere('first_name', 'like', $term)
+                            ->orWhere('last_name', 'like', $term)
+                            ->orWhere('customer_code', 'like', $term);
+                    })
+                    ->orWhereHas('businessLocation', fn ($l) => $l->where('name', 'like', $term));
+            });
+        }
+
+        $sort = $filters['sort'] ?? 'transaction_date';
+        $direction = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $allowedSort = ['id', 'transaction_date', 'final_total', 'shipping_status', 'shipping_charges', 'invoice_no'];
+        $query->orderBy(
+            in_array($sort, $allowedSort, true) ? $sort : 'transaction_date',
+            $direction
+        );
+
+        $perPage = min(100, max(10, (int) ($filters['per_page'] ?? 15)));
+        $paginator = $query->paginate($perPage)->withQueryString();
 
         $paginator->through(function (Sale $sale) {
             return [
@@ -45,6 +72,12 @@ class ShipmentController extends Controller
 
         return Inertia::render('sales/shipments/Index', [
             'shipments' => $paginator,
+            'filters' => [
+                'search' => $filters['search'] ?? '',
+                'sort' => $filters['sort'] ?? 'transaction_date',
+                'direction' => $filters['direction'] ?? 'desc',
+                'per_page' => $filters['per_page'] ?? 15,
+            ],
         ]);
     }
 }

@@ -1,11 +1,15 @@
 <?php
 
+use App\Http\Controllers\Bookings\BookingController;
 use App\Http\Controllers\Brands\BrandController;
 use App\Http\Controllers\BusinessLocations\BusinessLocationController;
 use App\Http\Controllers\CustomerGroups\CustomerGroupController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Expenses\ExpenseCategoryController;
 use App\Http\Controllers\Expenses\ExpenseController;
+use App\Http\Controllers\Kitchen\KitchenController;
+use App\Http\Controllers\ModifierSets\ModifierSetController;
+use App\Http\Controllers\Orders\OrderController;
 use App\Http\Controllers\PaymentAccounts\AccountTypeController;
 use App\Http\Controllers\PaymentAccounts\PaymentAccountController;
 use App\Http\Controllers\Pos\PosController;
@@ -17,10 +21,11 @@ use App\Http\Controllers\Reports\CustomerGroupReportController;
 use App\Http\Controllers\Reports\CustomerSuppliersReportController;
 use App\Http\Controllers\Reports\ExpenseReportController;
 use App\Http\Controllers\Reports\ItemsReportController;
+use App\Http\Controllers\Reports\ProductPurchaseReportController;
 use App\Http\Controllers\Reports\ProfitLossController;
-use App\Http\Controllers\Reports\RegisterReportController;
 use App\Http\Controllers\Reports\PurchasePaymentReportController;
 use App\Http\Controllers\Reports\PurchaseSellController;
+use App\Http\Controllers\Reports\RegisterReportController;
 use App\Http\Controllers\Reports\SalesRepresentativeReportController;
 use App\Http\Controllers\Reports\SellPaymentReportController;
 use App\Http\Controllers\Reports\StockAdjustmentReportController;
@@ -39,6 +44,7 @@ use App\Http\Controllers\Settings\ReceiptPrinterController;
 use App\Http\Controllers\StockAdjustments\StockAdjustmentController;
 use App\Http\Controllers\StockTransfers\StockTransferController;
 use App\Http\Controllers\Suppliers\SupplierController;
+use App\Http\Controllers\Tables\RestaurantTableController;
 use App\Http\Controllers\Taxes\TaxesController;
 use App\Http\Controllers\Taxes\TaxGroupController;
 use App\Http\Controllers\Taxes\TaxRateController;
@@ -69,6 +75,10 @@ Route::prefix('{current_team}')
     ->middleware(['auth', 'verified', EnsureTeamMembership::class])
     ->group(function () {
         Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+
+        Route::get('kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
+
+        Route::get('order', [OrderController::class, 'index'])->name('order.index');
 
         Route::get('suppliers/export/{format}', [SupplierController::class, 'exportFile'])
             ->name('suppliers.export');
@@ -177,12 +187,19 @@ Route::prefix('{current_team}')
         Route::get('purchases', [PurchaseController::class, 'index'])->name('purchases.index');
         Route::get('purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
         Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store');
+        Route::get('purchases/{purchase}/detail', [PurchaseController::class, 'detail'])->name('purchases.detail');
 
         Route::get('purchase-returns', [PurchaseReturnController::class, 'index'])->name('purchase-returns.index');
 
         Route::get('pos/list', [PosController::class, 'list'])->name('pos.list');
         Route::post('pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
         Route::get('pos', [PosController::class, 'index'])->name('pos.index');
+
+        Route::resource('booking', BookingController::class)->except([
+            'show',
+            'create',
+            'edit',
+        ]);
 
         Route::get('sales/drafts', [SaleController::class, 'draftsIndex'])->name('sales.drafts.index');
         Route::get('sales/drafts/create', [SaleController::class, 'createDraft'])->name('sales.drafts.create');
@@ -219,6 +236,18 @@ Route::prefix('{current_team}')
             'create',
             'edit',
         ]);
+
+        Route::prefix('settings')->group(function () {
+            Route::resource('tables', RestaurantTableController::class)
+                ->except(['show', 'create', 'edit'])
+                ->parameters(['tables' => 'restaurant_table'])
+                ->names('settings.tables');
+
+            Route::resource('modifiers', ModifierSetController::class)
+                ->except(['show', 'create', 'edit'])
+                ->parameters(['modifiers' => 'modifier_set'])
+                ->names('settings.modifiers');
+        });
 
         Route::resource('tax-rates', TaxRateController::class)->only(['store', 'update', 'destroy']);
 
@@ -289,6 +318,9 @@ Route::prefix('{current_team}')
 
         Route::get('reports/items', [ItemsReportController::class, 'itemsReport'])
             ->name('reports.items');
+
+        Route::get('reports/product-purchase', [ProductPurchaseReportController::class, 'productPurchase'])
+            ->name('reports.product-purchase');
 
         Route::get('reports/purchase-payments', [PurchasePaymentReportController::class, 'purchasePayments'])
             ->name('reports.purchase-payments');

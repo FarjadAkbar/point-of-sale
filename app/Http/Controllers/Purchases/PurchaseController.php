@@ -13,9 +13,11 @@ use App\Models\Supplier;
 use App\Models\TaxRate;
 use App\Models\Team;
 use App\Services\PurchaseService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class PurchaseController extends Controller
 {
@@ -131,5 +133,109 @@ class PurchaseController extends Controller
 
         return to_route('purchases.index', ['current_team' => $current_team])
             ->with('success', 'Purchase saved.');
+    }
+
+    public function detail(Team $current_team, Purchase $purchase): JsonResponse
+    {
+        abort_unless($purchase->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+
+        $purchase->load([
+            'supplier',
+            'businessLocation',
+            'taxRate',
+            'lines.product.unit',
+            'payments.paymentAccount',
+        ]);
+
+        $paidTotal = (float) $purchase->payments->sum('amount');
+        $finalTotal = (float) $purchase->final_total;
+        if ($paidTotal + 0.0001 >= $finalTotal) {
+            $paymentStatus = 'Paid';
+        } elseif ($paidTotal > 0) {
+            $paymentStatus = 'Partial';
+        } else {
+            $paymentStatus = 'Due';
+        }
+
+        $supplier = $purchase->supplier;
+
+        return response()->json([
+            'purchase' => [
+                'id' => $purchase->id,
+                'ref_no' => $purchase->ref_no,
+                'transaction_date' => $purchase->transaction_date?->toIso8601String(),
+                'status' => $purchase->status,
+                'payment_status' => $paymentStatus,
+                'pay_term_number' => $purchase->pay_term_number,
+                'pay_term_type' => $purchase->pay_term_type,
+                'discount_type' => $purchase->discount_type,
+                'discount_amount' => (string) $purchase->discount_amount,
+                'lines_total' => (string) $purchase->lines_total,
+                'purchase_tax_amount' => (string) $purchase->purchase_tax_amount,
+                'shipping_details' => $purchase->shipping_details,
+                'shipping_charges' => (string) $purchase->shipping_charges,
+                'additional_notes' => $purchase->additional_notes,
+                'additional_expenses' => $purchase->additional_expenses ?? [],
+                'final_total' => (string) $purchase->final_total,
+                'supplier' => $supplier ? [
+                    'display_name' => $supplier->display_name,
+                    'business_name' => $supplier->business_name,
+                    'first_name' => $supplier->first_name,
+                    'last_name' => $supplier->last_name,
+                    'tax_number' => $supplier->tax_number,
+                    'mobile' => $supplier->mobile,
+                    'email' => $supplier->email,
+                    'address_line_1' => $supplier->address_line_1,
+                    'address_line_2' => $supplier->address_line_2,
+                    'city' => $supplier->city,
+                    'state' => $supplier->state,
+                    'country' => $supplier->country,
+                    'zip_code' => $supplier->zip_code,
+                ] : null,
+                'business_location' => $purchase->businessLocation ? [
+                    'name' => $purchase->businessLocation->name,
+                    'landmark' => $purchase->businessLocation->landmark,
+                    'city' => $purchase->businessLocation->city,
+                    'state' => $purchase->businessLocation->state,
+                    'country' => $purchase->businessLocation->country,
+                    'zip_code' => $purchase->businessLocation->zip_code,
+                    'mobile' => $purchase->businessLocation->mobile,
+                    'email' => $purchase->businessLocation->email,
+                ] : null,
+                'tax_rate' => $purchase->taxRate ? [
+                    'name' => $purchase->taxRate->name,
+                    'amount' => (string) $purchase->taxRate->amount,
+                ] : null,
+                'lines' => $purchase->lines->map(fn ($line) => [
+                    'id' => $line->id,
+                    'product_name' => $line->product?->name ?? '—',
+                    'sku' => $line->product?->sku,
+                    'quantity' => (string) $line->quantity,
+                    'unit_short_name' => $line->product?->unit?->short_name ?? $line->product?->unit?->name ?? '',
+                    'unit_cost_before_discount' => (string) $line->unit_cost_before_discount,
+                    'discount_percent' => (string) $line->discount_percent,
+                    'unit_cost_exc_tax' => (string) $line->unit_cost_exc_tax,
+                    'line_subtotal_exc_tax' => (string) $line->line_subtotal_exc_tax,
+                    'product_tax_percent' => (string) $line->product_tax_percent,
+                    'line_tax_amount' => (string) $line->line_tax_amount,
+                    'line_total' => (string) $line->line_total,
+                    'unit_cost_inc_tax' => (string) round(
+                        (float) $line->quantity > 0
+                            ? (float) $line->line_total / (float) $line->quantity
+                            : 0.0,
+                        4
+                    ),
+                ]),
+                'payments' => $purchase->payments->map(fn ($p) => [
+                    'id' => $p->id,
+                    'amount' => (string) $p->amount,
+                    'paid_on' => $p->paid_on?->toIso8601String(),
+                    'method' => $p->method,
+                    'note' => $p->note,
+                    'payment_account' => $p->paymentAccount?->name,
+                ]),
+                'activities' => [],
+            ],
+        ]);
     }
 }

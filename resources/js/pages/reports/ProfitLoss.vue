@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { Printer } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import StandardDataTable from '@/components/StandardDataTable.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { reportRowMatchesSearch } from '@/lib/reportTableSearch';
 import reportRoutes from '@/routes/reports';
 import type { Team } from '@/types';
 
@@ -48,10 +50,22 @@ defineOptions({
 const page = usePage();
 const teamSlug = computed(() => (page.props.currentTeam as Team | null)?.slug ?? '');
 
+const search = ref('');
+const perPage = ref('25');
 const startDate = ref(props.filters.start_date);
 const endDate = ref(props.filters.end_date);
 const locationId = ref<string>(
     props.filters.business_location_id != null ? String(props.filters.business_location_id) : '',
+);
+
+watch(
+    () => props.filters,
+    (f) => {
+        startDate.value = f.start_date;
+        endDate.value = f.end_date;
+        locationId.value = f.business_location_id != null ? String(f.business_location_id) : '';
+    },
+    { deep: true },
 );
 
 const activeTab = ref<
@@ -80,9 +94,11 @@ const tabDefs = [
 
 function currency(n: string | number) {
     const v = typeof n === 'string' ? parseFloat(n) : n;
+
     if (Number.isNaN(v)) {
         return '—';
     }
+
     return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(v);
 }
 
@@ -94,14 +110,20 @@ function rowLabel(r: Row): string {
     return (r.name ?? r.invoice ?? r.date ?? r.day ?? '—') as string;
 }
 
+function triggerPrint(): void {
+    globalThis.print();
+}
+
 function applyFilters() {
     const q: Record<string, string> = {
         start_date: startDate.value,
         end_date: endDate.value,
     };
+
     if (locationId.value) {
         q.business_location_id = locationId.value;
     }
+
     router.get(reportRoutes.profitLoss.url(teamSlug.value), q, {
         preserveState: true,
         preserveScroll: true,
@@ -134,7 +156,11 @@ const currentRows = computed(() => {
     }
 });
 
-const tableTotal = computed(() => currency(sumRows(currentRows.value.rows)));
+const filteredBreakdownRows = computed(() =>
+    currentRows.value.rows.filter((r) => reportRowMatchesSearch(r, search.value)),
+);
+
+const tableTotal = computed(() => currency(sumRows(filteredBreakdownRows.value)));
 </script>
 
 <template>
@@ -145,45 +171,12 @@ const tableTotal = computed(() => currency(sumRows(currentRows.value.rows)));
             <h2 class="text-lg font-semibold">Profit / Loss report</h2>
         </div>
 
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-                <h1 class="text-2xl font-semibold tracking-tight">Profit / Loss report</h1>
-                <p class="text-muted-foreground text-sm">
-                    Final sales in the selected range. Product gross uses default purchase price
-                    (single DPP) per line; invoice header discounts are excluded from tab totals.
-                </p>
-            </div>
-            <Button variant="outline" class="print:hidden" type="button" @click="() => window.print()">
-                <Printer class="mr-2 size-4" />
-                Print
-            </Button>
-        </div>
-
-        <div class="grid gap-4 print:hidden md:grid-cols-3">
-            <div class="space-y-2">
-                <Label for="pl-location">Location</Label>
-                <select
-                    id="pl-location"
-                    v-model="locationId"
-                    class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                >
-                    <option value="">All locations</option>
-                    <option v-for="loc in businessLocations" :key="loc.id" :value="String(loc.id)">
-                        {{ loc.name }}
-                    </option>
-                </select>
-            </div>
-            <div class="space-y-2">
-                <Label for="pl-start">Start date</Label>
-                <Input id="pl-start" v-model="startDate" type="date" />
-            </div>
-            <div class="space-y-2">
-                <Label for="pl-end">End date</Label>
-                <Input id="pl-end" v-model="endDate" type="date" />
-            </div>
-            <div class="flex items-end md:col-span-3">
-                <Button type="button" @click="applyFilters">Apply filters</Button>
-            </div>
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight">Profit / Loss report</h1>
+            <p class="text-muted-foreground text-sm">
+                Final sales in the selected range. Product gross uses default purchase price
+                (single DPP) per line; invoice header discounts are excluded from tab totals.
+            </p>
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
@@ -308,64 +301,103 @@ const tableTotal = computed(() => currency(sumRows(currentRows.value.rows)));
             </CardContent>
         </Card>
 
-        <Card>
-            <CardHeader class="pb-2">
-                <CardTitle class="text-base">Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent class="space-y-4">
-                <div class="print:hidden flex flex-wrap gap-2 overflow-x-auto pb-1">
-                    <Button
-                        v-for="t in tabDefs"
-                        :key="t.id"
-                        type="button"
-                        :variant="activeTab === t.id ? 'default' : 'outline'"
-                        size="sm"
-                        class="shrink-0"
-                        @click="activeTab = t.id"
-                    >
-                        {{ t.label }}
-                    </Button>
-                </div>
+        <h2 class="text-base font-semibold tracking-tight">Breakdown</h2>
 
-                <div class="overflow-x-auto rounded-md border border-border">
-                    <table class="w-full min-w-[480px] border-collapse text-sm">
-                        <thead>
-                            <tr class="border-b border-border bg-muted/40">
-                                <th class="px-3 py-2 text-left font-medium">{{ currentRows.col }}</th>
-                                <th class="px-3 py-2 text-right font-medium">Gross profit</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-if="currentRows.rows.length === 0">
-                                <td colspan="2" class="text-muted-foreground px-3 py-6 text-center">
-                                    No data for this view.
-                                </td>
-                            </tr>
-                            <tr
-                                v-for="(r, idx) in currentRows.rows"
-                                :key="idx"
-                                class="border-b border-border/80 hover:bg-muted/20"
-                            >
-                                <td class="px-3 py-2">{{ rowLabel(r) }}</td>
-                                <td class="px-3 py-2 text-right tabular-nums">
-                                    {{ currency(r.gross_profit) }}
-                                </td>
-                            </tr>
-                        </tbody>
-                        <tfoot v-if="currentRows.rows.length">
-                            <tr class="bg-muted/50 font-medium">
-                                <td class="px-3 py-2">Total</td>
-                                <td class="px-3 py-2 text-right tabular-nums">{{ tableTotal }}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+        <StandardDataTable
+            v-model:search="search"
+            v-model:per-page="perPage"
+            class="print:hidden"
+            search-placeholder="Search table…"
+            :show-pagination="false"
+            :show-per-page="false"
+        >
+            <template #filters>
+                <div class="space-y-2">
+                    <Label for="pl-location">Location</Label>
+                    <select
+                        id="pl-location"
+                        v-model="locationId"
+                        class="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                    >
+                        <option value="">All locations</option>
+                        <option v-for="loc in businessLocations" :key="loc.id" :value="String(loc.id)">
+                            {{ loc.name }}
+                        </option>
+                    </select>
                 </div>
-                <p class="text-muted-foreground text-xs">
-                    <strong>Note:</strong> Profit by product / category / brand uses line-level pricing only; invoice
-                    header discounts are not included in these tab totals.
-                </p>
-            </CardContent>
-        </Card>
+                <div class="space-y-2">
+                    <Label for="pl-start">Start date</Label>
+                    <Input id="pl-start" v-model="startDate" type="date" />
+                </div>
+                <div class="space-y-2">
+                    <Label for="pl-end">End date</Label>
+                    <Input id="pl-end" v-model="endDate" type="date" />
+                </div>
+                <div class="pt-1">
+                    <Button type="button" size="sm" class="w-full" @click="applyFilters">Apply filters</Button>
+                </div>
+            </template>
+            <template #toolbar-actions>
+                <Button variant="outline" type="button" size="sm" @click="triggerPrint">
+                    <Printer class="mr-2 size-4" />
+                    Print
+                </Button>
+                <Button
+                    v-for="t in tabDefs"
+                    :key="t.id"
+                    type="button"
+                    size="sm"
+                    class="shrink-0"
+                    :variant="activeTab === t.id ? 'default' : 'outline'"
+                    @click="activeTab = t.id"
+                >
+                    {{ t.label }}
+                </Button>
+            </template>
+            <div class="rounded-md border border-border overflow-x-auto">
+                <table class="w-full min-w-[480px] border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b border-border bg-muted/40">
+                            <th class="px-3 py-2 text-left font-medium">{{ currentRows.col }}</th>
+                            <th class="px-3 py-2 text-right font-medium">Gross profit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-if="currentRows.rows.length === 0">
+                            <td colspan="2" class="text-muted-foreground px-3 py-6 text-center">
+                                No data for this view.
+                            </td>
+                        </tr>
+                        <tr v-else-if="filteredBreakdownRows.length === 0">
+                            <td colspan="2" class="text-muted-foreground px-3 py-6 text-center">
+                                No rows match your search.
+                            </td>
+                        </tr>
+                        <tr
+                            v-for="(r, idx) in filteredBreakdownRows"
+                            :key="idx"
+                            class="border-b border-border/80 hover:bg-muted/20"
+                        >
+                            <td class="px-3 py-2">{{ rowLabel(r) }}</td>
+                            <td class="px-3 py-2 text-right tabular-nums">
+                                {{ currency(r.gross_profit) }}
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot v-if="currentRows.rows.length">
+                        <tr class="bg-muted/50 font-medium">
+                            <td class="px-3 py-2">Total</td>
+                            <td class="px-3 py-2 text-right tabular-nums">{{ tableTotal }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </StandardDataTable>
+
+        <p class="text-muted-foreground text-xs">
+            <strong>Note:</strong> Profit by product / category / brand uses line-level pricing only; invoice
+            header discounts are not included in these tab totals.
+        </p>
     </div>
 </template>
 

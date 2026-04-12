@@ -4,6 +4,9 @@ import {
     Award,
     ArrowLeftRight,
     BarChart3,
+    Bell,
+    Calendar,
+    ChefHat,
     FileText,
     Barcode,
     Building2,
@@ -26,10 +29,12 @@ import {
     ScanLine,
     Settings,
     Shield,
+    ShoppingBag,
     ShoppingCart,
     SlidersHorizontal,
     SquarePlus,
     Store,
+    Table,
     Undo2,
     Tags,
     UserCircle,
@@ -58,8 +63,9 @@ import {
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
 import barcodeSettingsRoutes from '@/routes/barcode-settings';
-import businessLocations from '@/routes/business-locations';
+import bookingRoutes from '@/routes/booking';
 import brands from '@/routes/brands';
+import businessLocations from '@/routes/business-locations';
 import customerGroups from '@/routes/customer-groups';
 import customers from '@/routes/customers';
 import expenseCategories from '@/routes/expense-categories';
@@ -71,13 +77,15 @@ import productCategories from '@/routes/product-categories';
 import products from '@/routes/products';
 import purchaseReturnRoutes from '@/routes/purchase-returns';
 import purchases from '@/routes/purchases';
-import reportRoutes from '@/routes/reports';
 import receiptPrinterRoutes from '@/routes/receipt-printer';
-import salesCommissionAgentRoutes from '@/routes/sales-commission-agents';
+import reportRoutes from '@/routes/reports';
+import salesRoutes from '@/routes/sales';
 import salesDraftRoutes from '@/routes/sales/drafts';
 import salesQuotationsRoutes from '@/routes/sales/quotations';
-import salesRoutes from '@/routes/sales';
+import salesCommissionAgentRoutes from '@/routes/sales-commission-agents';
 import sellingPriceGroups from '@/routes/selling-price-groups';
+import settingsModifiersRoutes from '@/routes/settings/modifiers';
+import settingsTableRoutes from '@/routes/settings/tables';
 import stockAdjustments from '@/routes/stock-adjustments';
 import stockTransfers from '@/routes/stock-transfers';
 import suppliers from '@/routes/suppliers';
@@ -85,12 +93,42 @@ import taxesPageRoutes from '@/routes/taxes';
 import units from '@/routes/units';
 import variationTemplates from '@/routes/variation-templates';
 import warranties from '@/routes/warranties';
+import kitchenRoutes from '@/routes/kitchen';
+import orderRoutes from '@/routes/order';
 
 const page = usePage();
 const { isCurrentUrl } = useCurrentUrl();
 
 const dashboardUrl = computed(() =>
     page.props.currentTeam ? dashboard(page.props.currentTeam.slug).url : '/',
+);
+
+const bookingUrl = computed(() =>
+    page.props.currentTeam
+        ? bookingRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const kitchenUrl = computed(() =>
+    page.props.currentTeam
+        ? kitchenRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const orderUrl = computed(() =>
+    page.props.currentTeam
+        ? orderRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const orderNavOpen = ref(false);
+
+watch(
+    () => [page.url, kitchenUrl.value, orderUrl.value] as const,
+    () => {
+        orderNavOpen.value = isCurrentUrl(kitchenUrl.value) || isCurrentUrl(orderUrl.value);
+    },
+    { immediate: true },
 );
 
 const suppliersUrl = computed(() =>
@@ -144,6 +182,18 @@ const sellingPriceGroupsUrl = computed(() =>
 const variationTemplatesUrl = computed(() =>
     page.props.currentTeam
         ? variationTemplates.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const modifierSetsUrl = computed(() =>
+    page.props.currentTeam
+        ? settingsModifiersRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const settingsTablesUrl = computed(() =>
+    page.props.currentTeam
+        ? settingsTableRoutes.index.url(page.props.currentTeam.slug)
         : '/',
 );
 
@@ -383,6 +433,12 @@ const itemsReportUrl = computed(() =>
     page.props.currentTeam ? reportRoutes.items.url(page.props.currentTeam.slug) : '/',
 );
 
+const productPurchaseReportUrl = computed(() =>
+    page.props.currentTeam
+        ? reportRoutes.productPurchase.url(page.props.currentTeam.slug)
+        : '/',
+);
+
 const purchasePaymentsReportUrl = computed(() =>
     page.props.currentTeam
         ? reportRoutes.purchasePayments.url(page.props.currentTeam.slug)
@@ -479,13 +535,17 @@ watch(
             receiptPrinterUrl.value,
             barcodeSettingsUrl.value,
             businessLocationsUrl.value,
+            modifierSetsUrl.value,
+            settingsTablesUrl.value,
         ] as const,
     () => {
         settingsOpen.value =
             isCurrentUrl(taxesUrl.value) ||
             isCurrentUrl(receiptPrinterUrl.value) ||
             isCurrentUrl(barcodeSettingsUrl.value) ||
-            isCurrentUrl(businessLocationsUrl.value);
+            isCurrentUrl(businessLocationsUrl.value) ||
+            isCurrentUrl(modifierSetsUrl.value) ||
+            isCurrentUrl(settingsTablesUrl.value);
     },
     { immediate: true },
 );
@@ -611,8 +671,12 @@ watch(
             stockAdjustmentReportUrl.value,
             trendingProductsReportUrl.value,
             itemsReportUrl.value,
+            productPurchaseReportUrl.value,
             purchasePaymentsReportUrl.value,
             sellPaymentsReportUrl.value,
+            expenseReportUrl.value,
+            registerReportUrl.value,
+            salesRepresentativeReportUrl.value,
         ] as const,
     () => {
         reportsOpen.value =
@@ -625,8 +689,12 @@ watch(
             isCurrentUrl(stockAdjustmentReportUrl.value) ||
             isCurrentUrl(trendingProductsReportUrl.value) ||
             isCurrentUrl(itemsReportUrl.value) ||
+            isCurrentUrl(productPurchaseReportUrl.value) ||
             isCurrentUrl(purchasePaymentsReportUrl.value) ||
-            isCurrentUrl(sellPaymentsReportUrl.value);
+            isCurrentUrl(sellPaymentsReportUrl.value) ||
+            isCurrentUrl(expenseReportUrl.value) ||
+            isCurrentUrl(registerReportUrl.value) ||
+            isCurrentUrl(salesRepresentativeReportUrl.value);
     },
     { immediate: true },
 );
@@ -667,6 +735,50 @@ watch(
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
+
+                    <Collapsible
+                        v-model:open="userManagementOpen"
+                        class="group/collapsible"
+                    >
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger as-child>
+                                <SidebarMenuButton
+                                    :is-active="
+                                        isCurrentUrl(salesCommissionAgentsUrl)
+                                    "
+                                    tooltip="User management"
+                                >
+                                    <Users />
+                                    <span>User Management</span>
+                                    <ChevronRight
+                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                    />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <SidebarMenuSub>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    salesCommissionAgentsUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link :href="salesCommissionAgentsUrl">
+                                                <Percent />
+                                                <span
+                                                    >Sales commission agents</span
+                                                >
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                </SidebarMenuSub>
+                            </CollapsibleContent>
+                        </SidebarMenuItem>
+                    </Collapsible>
 
                     <Collapsible v-model:open="contactsOpen" class="group/collapsible">
                         <SidebarMenuItem>
@@ -896,185 +1008,6 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <Collapsible
-                        v-model:open="userManagementOpen"
-                        class="group/collapsible"
-                    >
-                        <SidebarMenuItem>
-                            <CollapsibleTrigger as-child>
-                                <SidebarMenuButton
-                                    :is-active="
-                                        isCurrentUrl(salesCommissionAgentsUrl)
-                                    "
-                                    tooltip="User management"
-                                >
-                                    <Users />
-                                    <span>User Management</span>
-                                    <ChevronRight
-                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
-                                    />
-                                </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                                <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(
-                                                    salesCommissionAgentsUrl,
-                                                )
-                                            "
-                                        >
-                                            <Link :href="salesCommissionAgentsUrl">
-                                                <Percent />
-                                                <span
-                                                    >Sales commission agents</span
-                                                >
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                </SidebarMenuSub>
-                            </CollapsibleContent>
-                        </SidebarMenuItem>
-                    </Collapsible>
-
-                    <Collapsible v-model:open="paymentNavOpen" class="group/collapsible">
-                        <SidebarMenuItem>
-                            <CollapsibleTrigger as-child>
-                                <SidebarMenuButton
-                                    :is-active="
-                                        isCurrentUrl(paymentAccountsListUrl) ||
-                                        isCurrentUrl(paymentSettingsUrl)
-                                    "
-                                    tooltip="Payment accounts"
-                                >
-                                    <Wallet />
-                                    <span>Payment accounts</span>
-                                    <ChevronRight
-                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
-                                    />
-                                </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                                <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(paymentAccountsListUrl)
-                                            "
-                                        >
-                                            <Link :href="paymentAccountsListUrl">
-                                                <ListOrdered />
-                                                <span>List accounts</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(paymentSettingsUrl)
-                                            "
-                                        >
-                                            <Link :href="paymentSettingsUrl">
-                                                <CircleDollarSign />
-                                                <span
-                                                    >Payment methods &amp;
-                                                    POS accounts</span
-                                                >
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                </SidebarMenuSub>
-                            </CollapsibleContent>
-                        </SidebarMenuItem>
-                    </Collapsible>
-
-                    <Collapsible v-model:open="settingsOpen" class="group/collapsible">
-                        <SidebarMenuItem>
-                            <CollapsibleTrigger as-child>
-                                <SidebarMenuButton
-                                    :is-active="
-                                        isCurrentUrl(taxesUrl) ||
-                                        isCurrentUrl(receiptPrinterUrl) ||
-                                        isCurrentUrl(barcodeSettingsUrl) ||
-                                        isCurrentUrl(businessLocationsUrl)
-                                    "
-                                    tooltip="Settings"
-                                >
-                                    <Settings />
-                                    <span>Settings</span>
-                                    <ChevronRight
-                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
-                                    />
-                                </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                                <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="isCurrentUrl(taxesUrl)"
-                                        >
-                                            <Link :href="taxesUrl">
-                                                <Landmark />
-                                                <span>Taxes</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(receiptPrinterUrl)
-                                            "
-                                        >
-                                            <Link :href="receiptPrinterUrl">
-                                                <PrinterIcon />
-                                                <span>Receipt printer</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(barcodeSettingsUrl)
-                                            "
-                                        >
-                                            <Link :href="barcodeSettingsUrl">
-                                                <Barcode />
-                                                <span>Barcode settings</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(businessLocationsUrl)
-                                            "
-                                        >
-                                            <Link :href="businessLocationsUrl">
-                                                <MapPin />
-                                                <span>Business location</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                </SidebarMenuSub>
-                            </CollapsibleContent>
-                        </SidebarMenuItem>
-                    </Collapsible>
-
                     <Collapsible v-model:open="purchasesOpen" class="group/collapsible">
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
@@ -1136,195 +1069,6 @@ watch(
                                             <Link :href="purchasesCreateUrl">
                                                 <SquarePlus />
                                                 <span>Add purchase</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                </SidebarMenuSub>
-                            </CollapsibleContent>
-                        </SidebarMenuItem>
-                    </Collapsible>
-
-                    <Collapsible
-                        v-model:open="stockTransfersOpen"
-                        class="group/collapsible"
-                    >
-                        <SidebarMenuItem>
-                            <CollapsibleTrigger as-child>
-                                <SidebarMenuButton
-                                    :is-active="
-                                        isCurrentUrl(stockTransfersListUrl) ||
-                                        isCurrentUrl(stockTransfersCreateUrl)
-                                    "
-                                    tooltip="Stock transfer"
-                                >
-                                    <ArrowLeftRight />
-                                    <span>Stock transfer</span>
-                                    <ChevronRight
-                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
-                                    />
-                                </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                                <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(
-                                                    stockTransfersListUrl,
-                                                )
-                                            "
-                                        >
-                                            <Link :href="stockTransfersListUrl">
-                                                <ListOrdered />
-                                                <span>List stock transfer</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(
-                                                    stockTransfersCreateUrl,
-                                                )
-                                            "
-                                        >
-                                            <Link :href="stockTransfersCreateUrl">
-                                                <SquarePlus />
-                                                <span>Add stock transfer</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                </SidebarMenuSub>
-                            </CollapsibleContent>
-                        </SidebarMenuItem>
-                    </Collapsible>
-
-                    <Collapsible
-                        v-model:open="stockAdjustmentsOpen"
-                        class="group/collapsible"
-                    >
-                        <SidebarMenuItem>
-                            <CollapsibleTrigger as-child>
-                                <SidebarMenuButton
-                                    :is-active="
-                                        isCurrentUrl(stockAdjustmentsListUrl) ||
-                                        isCurrentUrl(stockAdjustmentsCreateUrl)
-                                    "
-                                    tooltip="Stock adjustments"
-                                >
-                                    <SlidersHorizontal />
-                                    <span>Stock adjustments</span>
-                                    <ChevronRight
-                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
-                                    />
-                                </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                                <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(
-                                                    stockAdjustmentsListUrl,
-                                                )
-                                            "
-                                        >
-                                            <Link :href="stockAdjustmentsListUrl">
-                                                <ListOrdered />
-                                                <span>List stock adjustment</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(
-                                                    stockAdjustmentsCreateUrl,
-                                                )
-                                            "
-                                        >
-                                            <Link
-                                                :href="stockAdjustmentsCreateUrl"
-                                            >
-                                                <SquarePlus />
-                                                <span>Add stock adjustment</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                </SidebarMenuSub>
-                            </CollapsibleContent>
-                        </SidebarMenuItem>
-                    </Collapsible>
-
-                    <Collapsible v-model:open="expensesOpen" class="group/collapsible">
-                        <SidebarMenuItem>
-                            <CollapsibleTrigger as-child>
-                                <SidebarMenuButton
-                                    :is-active="
-                                        isCurrentUrl(expensesListUrl) ||
-                                        isCurrentUrl(expensesCreateUrl) ||
-                                        isCurrentUrl(expenseCategoriesIndexUrl)
-                                    "
-                                    tooltip="Expenses"
-                                >
-                                    <Receipt />
-                                    <span>Expenses</span>
-                                    <ChevronRight
-                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
-                                    />
-                                </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                                <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(expensesListUrl)
-                                            "
-                                        >
-                                            <Link :href="expensesListUrl">
-                                                <ListOrdered />
-                                                <span>List expenses</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(expensesCreateUrl)
-                                            "
-                                        >
-                                            <Link :href="expensesCreateUrl">
-                                                <SquarePlus />
-                                                <span>Add expense</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(
-                                                    expenseCategoriesIndexUrl,
-                                                )
-                                            "
-                                        >
-                                            <Link :href="expenseCategoriesIndexUrl">
-                                                <FolderTree />
-                                                <span>Expense categories</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
@@ -1528,6 +1272,250 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
+                    <Collapsible
+                        v-model:open="stockTransfersOpen"
+                        class="group/collapsible"
+                    >
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger as-child>
+                                <SidebarMenuButton
+                                    :is-active="
+                                        isCurrentUrl(stockTransfersListUrl) ||
+                                        isCurrentUrl(stockTransfersCreateUrl)
+                                    "
+                                    tooltip="Stock transfers"
+                                >
+                                    <ArrowLeftRight />
+                                    <span>Stock Transfers</span>
+                                    <ChevronRight
+                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                    />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <SidebarMenuSub>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    stockTransfersListUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link :href="stockTransfersListUrl">
+                                                <ListOrdered />
+                                                <span>List stock transfer</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    stockTransfersCreateUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link :href="stockTransfersCreateUrl">
+                                                <SquarePlus />
+                                                <span>Add stock transfer</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                </SidebarMenuSub>
+                            </CollapsibleContent>
+                        </SidebarMenuItem>
+                    </Collapsible>
+
+                    <Collapsible
+                        v-model:open="stockAdjustmentsOpen"
+                        class="group/collapsible"
+                    >
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger as-child>
+                                <SidebarMenuButton
+                                    :is-active="
+                                        isCurrentUrl(stockAdjustmentsListUrl) ||
+                                        isCurrentUrl(stockAdjustmentsCreateUrl)
+                                    "
+                                    tooltip="Stock adjustment"
+                                >
+                                    <SlidersHorizontal />
+                                    <span>Stock Adjustment</span>
+                                    <ChevronRight
+                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                    />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <SidebarMenuSub>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    stockAdjustmentsListUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link :href="stockAdjustmentsListUrl">
+                                                <ListOrdered />
+                                                <span>List stock adjustment</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    stockAdjustmentsCreateUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link
+                                                :href="stockAdjustmentsCreateUrl"
+                                            >
+                                                <SquarePlus />
+                                                <span>Add stock adjustment</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                </SidebarMenuSub>
+                            </CollapsibleContent>
+                        </SidebarMenuItem>
+                    </Collapsible>
+
+                    <Collapsible v-model:open="paymentNavOpen" class="group/collapsible">
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger as-child>
+                                <SidebarMenuButton
+                                    :is-active="
+                                        isCurrentUrl(paymentAccountsListUrl) ||
+                                        isCurrentUrl(paymentSettingsUrl)
+                                    "
+                                    tooltip="Payment Accounts"
+                                >
+                                    <Wallet />
+                                    <span>Payment Accounts</span>
+                                    <ChevronRight
+                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                    />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <SidebarMenuSub>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(paymentAccountsListUrl)
+                                            "
+                                        >
+                                            <Link :href="paymentAccountsListUrl">
+                                                <ListOrdered />
+                                                <span>List accounts</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(paymentSettingsUrl)
+                                            "
+                                        >
+                                            <Link :href="paymentSettingsUrl">
+                                                <CircleDollarSign />
+                                                <span
+                                                    >Payment methods &amp;
+                                                    POS accounts</span
+                                                >
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                </SidebarMenuSub>
+                            </CollapsibleContent>
+                        </SidebarMenuItem>
+                    </Collapsible>
+
+                    <Collapsible v-model:open="expensesOpen" class="group/collapsible">
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger as-child>
+                                <SidebarMenuButton
+                                    :is-active="
+                                        isCurrentUrl(expensesListUrl) ||
+                                        isCurrentUrl(expensesCreateUrl) ||
+                                        isCurrentUrl(expenseCategoriesIndexUrl)
+                                    "
+                                    tooltip="Expenses"
+                                >
+                                    <Receipt />
+                                    <span>Expenses</span>
+                                    <ChevronRight
+                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                    />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <SidebarMenuSub>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(expensesListUrl)
+                                            "
+                                        >
+                                            <Link :href="expensesListUrl">
+                                                <ListOrdered />
+                                                <span>List expenses</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(expensesCreateUrl)
+                                            "
+                                        >
+                                            <Link :href="expensesCreateUrl">
+                                                <SquarePlus />
+                                                <span>Add expense</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(
+                                                    expenseCategoriesIndexUrl,
+                                                )
+                                            "
+                                        >
+                                            <Link :href="expenseCategoriesIndexUrl">
+                                                <FolderTree />
+                                                <span>Expense categories</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                </SidebarMenuSub>
+                            </CollapsibleContent>
+                        </SidebarMenuItem>
+                    </Collapsible>
+
                     <Collapsible v-model:open="reportsOpen" class="group/collapsible">
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
@@ -1542,8 +1530,12 @@ watch(
                                         isCurrentUrl(stockAdjustmentReportUrl) ||
                                         isCurrentUrl(trendingProductsReportUrl) ||
                                         isCurrentUrl(itemsReportUrl) ||
+                                        isCurrentUrl(productPurchaseReportUrl) ||
                                         isCurrentUrl(purchasePaymentsReportUrl) ||
-                                        isCurrentUrl(sellPaymentsReportUrl)
+                                        isCurrentUrl(sellPaymentsReportUrl) ||
+                                        isCurrentUrl(expenseReportUrl) ||
+                                        isCurrentUrl(registerReportUrl) ||
+                                        isCurrentUrl(salesRepresentativeReportUrl)
                                     "
                                     tooltip="Reports"
                                 >
@@ -1659,6 +1651,17 @@ watch(
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
+                                            :is-active="isCurrentUrl(productPurchaseReportUrl)"
+                                        >
+                                            <Link :href="productPurchaseReportUrl">
+                                                <span>Product purchase report</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
                                             :is-active="isCurrentUrl(purchasePaymentsReportUrl)"
                                         >
                                             <Link :href="purchasePaymentsReportUrl">
@@ -1674,6 +1677,217 @@ watch(
                                         >
                                             <Link :href="sellPaymentsReportUrl">
                                                 <span>Sell payment report</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="isCurrentUrl(expenseReportUrl)"
+                                        >
+                                            <Link :href="expenseReportUrl">
+                                                <span>Expense report</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="isCurrentUrl(registerReportUrl)"
+                                        >
+                                            <Link :href="registerReportUrl">
+                                                <span>Register report</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(salesRepresentativeReportUrl)
+                                            "
+                                        >
+                                            <Link :href="salesRepresentativeReportUrl">
+                                                <span>Sales representative report</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                </SidebarMenuSub>
+                            </CollapsibleContent>
+                        </SidebarMenuItem>
+                    </Collapsible>
+
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            as-child
+                            :is-active="isCurrentUrl(bookingUrl)"
+                            tooltip="Booking"
+                        >
+                            <Link :href="bookingUrl">
+                                <Calendar />
+                                <span>Booking</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <Collapsible v-model:open="orderNavOpen" class="group/collapsible">
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger as-child>
+                                <SidebarMenuButton
+                                    :is-active="isCurrentUrl(kitchenUrl) || isCurrentUrl(orderUrl)"
+                                    tooltip="Order"
+                                >
+                                    <ListOrdered />
+                                    <span>Order</span>
+                                    <ChevronRight
+                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                    />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <SidebarMenuSub>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="isCurrentUrl(kitchenUrl)"
+                                        >
+                                            <Link :href="kitchenUrl">
+                                                <ChefHat />
+                                                <span>Kitchen</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="isCurrentUrl(orderUrl)"
+                                        >
+                                            <Link :href="orderUrl">
+                                                <ShoppingBag />
+                                                <span>Orders</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                </SidebarMenuSub>
+                            </CollapsibleContent>
+                        </SidebarMenuItem>
+                    </Collapsible>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            disabled
+                            tooltip="Notification templates"
+                        >
+                            <Bell />
+                            <span>Notification Templates</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+
+                    <Collapsible v-model:open="settingsOpen" class="group/collapsible">
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger as-child>
+                                <SidebarMenuButton
+                                    :is-active="
+                                        isCurrentUrl(taxesUrl) ||
+                                        isCurrentUrl(receiptPrinterUrl) ||
+                                        isCurrentUrl(barcodeSettingsUrl) ||
+                                        isCurrentUrl(businessLocationsUrl) ||
+                                        isCurrentUrl(modifierSetsUrl) ||
+                                        isCurrentUrl(settingsTablesUrl)
+                                    "
+                                    tooltip="Settings"
+                                >
+                                    <Settings />
+                                    <span>Settings</span>
+                                    <ChevronRight
+                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                    />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <SidebarMenuSub>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="isCurrentUrl(taxesUrl)"
+                                        >
+                                            <Link :href="taxesUrl">
+                                                <Landmark />
+                                                <span>Taxes</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(receiptPrinterUrl)
+                                            "
+                                        >
+                                            <Link :href="receiptPrinterUrl">
+                                                <PrinterIcon />
+                                                <span>Receipt printer</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(barcodeSettingsUrl)
+                                            "
+                                        >
+                                            <Link :href="barcodeSettingsUrl">
+                                                <Barcode />
+                                                <span>Barcode settings</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(businessLocationsUrl)
+                                            "
+                                        >
+                                            <Link :href="businessLocationsUrl">
+                                                <MapPin />
+                                                <span>Business location</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(modifierSetsUrl)
+                                            "
+                                        >
+                                            <Link :href="modifierSetsUrl">
+                                                <SlidersHorizontal />
+                                                <span>Modifiers</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem>
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(settingsTablesUrl)
+                                            "
+                                        >
+                                            <Link :href="settingsTablesUrl">
+                                                <Table />
+                                                <span>Tables</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>

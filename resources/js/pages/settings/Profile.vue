@@ -23,7 +23,7 @@ defineOptions({
         breadcrumbs: [
             {
                 title: 'Profile settings',
-                href: edit(),
+                href: edit.url(),
             },
         ],
     },
@@ -46,7 +46,8 @@ const user = computed(() => page.props.auth.user);
         />
 
         <Form
-            v-bind="ProfileController.update.form()"
+            :action="ProfileController.update.url()"
+            method="patch"
             class="space-y-6"
             v-slot="{ errors, processing, recentlySuccessful }"
         >
@@ -83,7 +84,8 @@ const user = computed(() => page.props.auth.user);
                 <p class="-mt-4 text-sm text-muted-foreground">
                     Your email address is unverified.
                     <Link
-                        :href="send()"
+                        :href="send.url()"
+                        method="post"
                         as="button"
                         class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
                     >

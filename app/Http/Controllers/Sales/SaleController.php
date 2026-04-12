@@ -243,7 +243,10 @@ class SaleController extends Controller
             'lines.product',
             'payments.paymentAccount',
             'activities.user',
+            'createdBy',
         ]);
+
+        $paidTotal = $sale->payments->sum('amount');
 
         return response()->json([
             'sale' => [
@@ -251,6 +254,11 @@ class SaleController extends Controller
                 'invoice_no' => $sale->invoice_no,
                 'transaction_date' => $sale->transaction_date?->toIso8601String(),
                 'status' => $sale->status,
+                'payment_status' => bccomp((string) $paidTotal, (string) $sale->final_total, 4) >= 0 ? 'paid' : 'due',
+                'created_by_user' => $sale->createdBy ? [
+                    'id' => $sale->createdBy->id,
+                    'name' => $sale->createdBy->name,
+                ] : null,
                 'final_total' => (string) $sale->final_total,
                 'lines_total' => (string) $sale->lines_total,
                 'sale_note' => $sale->sale_note,

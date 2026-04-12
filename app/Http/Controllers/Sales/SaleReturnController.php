@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Sales\SaleReturnIndexRequest;
 use App\Http\Requests\Sales\StoreSaleReturnRequest;
 use App\Models\Sale;
 use App\Models\SaleReturn;
@@ -19,29 +20,61 @@ class SaleReturnController extends Controller
         protected SaleReturnService $saleReturnService,
     ) {}
 
-    public function index(Request $request, Team $current_team): Response
+    public function index(SaleReturnIndexRequest $request, Team $current_team): Response
     {
-        $returns = SaleReturn::query()
+        $filters = $request->filters();
+        $query = SaleReturn::query()
             ->forTeam($current_team)
-            ->with(['parentSale.customer', 'parentSale.businessLocation'])
-            ->orderByDesc('created_at')
-            ->paginate(20)
-            ->withQueryString()
-            ->through(fn (SaleReturn $r) => [
-                'id' => $r->id,
-                'invoice_no' => $r->invoice_no,
-                'transaction_date' => $r->transaction_date?->toIso8601String(),
-                'total_return' => (string) $r->total_return,
-                'parent_sale' => $r->parentSale ? [
-                    'id' => $r->parentSale->id,
-                    'invoice_no' => $r->parentSale->invoice_no,
-                    'customer' => $r->parentSale->customer?->display_name,
-                    'business_location' => $r->parentSale->businessLocation?->name,
-                ] : null,
-            ]);
+            ->with(['parentSale.customer', 'parentSale.businessLocation']);
+
+        if (! empty($filters['search'])) {
+            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']).'%';
+            $query->where(function ($q) use ($term) {
+                $q->where('invoice_no', 'like', $term)
+                    ->orWhereHas('parentSale', function ($ps) use ($term) {
+                        $ps->where('invoice_no', 'like', $term)
+                            ->orWhereHas('customer', function ($c) use ($term) {
+                                $c->where('business_name', 'like', $term)
+                                    ->orWhere('first_name', 'like', $term)
+                                    ->orWhere('last_name', 'like', $term)
+                                    ->orWhere('customer_code', 'like', $term);
+                            })
+                            ->orWhereHas('businessLocation', fn ($l) => $l->where('name', 'like', $term));
+                    });
+            });
+        }
+
+        $sort = $filters['sort'] ?? 'created_at';
+        $direction = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $allowedSort = ['id', 'transaction_date', 'total_return', 'invoice_no', 'created_at'];
+        $query->orderBy(
+            in_array($sort, $allowedSort, true) ? $sort : 'created_at',
+            $direction
+        );
+
+        $perPage = min(100, max(10, (int) ($filters['per_page'] ?? 15)));
+        $paginator = $query->paginate($perPage)->withQueryString();
+        $paginator->through(fn (SaleReturn $r) => [
+            'id' => $r->id,
+            'invoice_no' => $r->invoice_no,
+            'transaction_date' => $r->transaction_date?->toIso8601String(),
+            'total_return' => (string) $r->total_return,
+            'parent_sale' => $r->parentSale ? [
+                'id' => $r->parentSale->id,
+                'invoice_no' => $r->parentSale->invoice_no,
+                'customer' => $r->parentSale->customer?->display_name,
+                'business_location' => $r->parentSale->businessLocation?->name,
+            ] : null,
+        ]);
 
         return Inertia::render('sales/returns/Index', [
-            'returns' => $returns,
+            'returns' => $paginator,
+            'filters' => [
+                'search' => $filters['search'] ?? '',
+                'sort' => $filters['sort'] ?? 'created_at',
+                'direction' => $filters['direction'] ?? 'desc',
+                'per_page' => $filters['per_page'] ?? 15,
+            ],
         ]);
     }
 

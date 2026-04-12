@@ -51,11 +51,11 @@ defineOptions({
         breadcrumbs: [
             {
                 title: 'Teams',
-                href: index(),
+                href: index.url(),
             },
             {
                 title: props.team.name,
-                href: edit(props.team.slug),
+                href: edit.url(props.team.slug),
             },
         ],
     }),
@@ -77,10 +77,17 @@ const pageTitle = computed(() =>
 );
 
 const updateMemberRole = (member: TeamMember, newRole: string) => {
-    router.visit(updateMember([props.team.slug, member.id]), {
-        data: { role: newRole },
-        preserveScroll: true,
-    });
+    router.visit(
+        updateMember.url({
+            team: props.team.slug,
+            user: member.id,
+        }),
+        {
+            method: 'patch',
+            data: { role: newRole },
+            preserveScroll: true,
+        },
+    );
 };
 
 const confirmRemoveMember = (member: TeamMember) => {
@@ -109,7 +116,8 @@ const confirmCancelInvitation = (invitation: TeamInvitation) => {
             />
 
             <Form
-                v-bind="update.form(team.slug)"
+                :action="update.url(team.slug)"
+                method="patch"
                 class="space-y-6"
                 v-slot="{ errors, processing, recentlySuccessful }"
             >

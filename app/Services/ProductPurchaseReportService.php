@@ -88,11 +88,12 @@ class ProductPurchaseReportService
 
             $ref = (string) ($pur->ref_no ?? '#'.$pur->id);
             $rows[] = [
+                'purchase_id' => $pur->id,
+                'purchase_line_id' => $line->id,
                 'product_name' => (string) $p->name,
                 'sku' => (string) ($p->sku ?? ''),
                 'supplier' => $this->formatSupplier($pur->supplier),
                 'reference_no' => $ref,
-                'purchase_url' => route('purchases.index', ['current_team' => $team->slug]).'?'.http_build_query(['search' => $ref]),
                 'date' => $pur->transaction_date?->toDateString() ?? '',
                 'quantity' => $this->nf($qty),
                 'quantity_adjusted' => $this->nf($adj),
@@ -129,12 +130,19 @@ class ProductPurchaseReportService
         if ($s === null) {
             return '';
         }
-        $parts = array_filter([
-            trim(implode(' ', array_filter([$s->first_name, $s->last_name]))),
-            $s->business_name,
-        ]);
+        $person = trim(implode(' ', array_filter([$s->first_name, $s->last_name])));
+        $biz = $s->business_name ? trim((string) $s->business_name) : '';
+        if ($biz !== '' && $person !== '') {
+            return $biz."\n".$person;
+        }
+        if ($biz !== '') {
+            return $biz;
+        }
+        if ($person !== '') {
+            return $person;
+        }
 
-        return $parts !== [] ? implode(', ', $parts) : $s->display_name;
+        return $s->display_name;
     }
 
     protected function nf(float $v): string

@@ -53,7 +53,8 @@ function handleOpenChange(value: boolean) {
         <DialogContent>
             <Form
                 :key="formKey"
-                v-bind="storeInvitation.form(props.team.slug)"
+                :action="storeInvitation.url(props.team.slug)"
+                method="post"
                 class="space-y-6"
                 v-slot="{ errors, processing }"
                 @success="emit('update:open', false)"

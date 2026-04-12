@@ -25,7 +25,7 @@ defineOptions({
         breadcrumbs: [
             {
                 title: 'Teams',
-                href: index(),
+                href: index.url(),
             },
         ],
     },

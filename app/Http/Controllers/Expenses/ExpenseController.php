@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Expenses;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Expenses\ExpenseIndexRequest;
 use App\Http\Requests\Expenses\StoreExpenseRequest;
 use App\Models\BusinessLocation;
 use App\Models\Customer;
@@ -22,36 +23,66 @@ class ExpenseController extends Controller
         protected ExpenseService $expenseService,
     ) {}
 
-    public function index(Team $current_team): Response
+    public function index(ExpenseIndexRequest $request, Team $current_team): Response
     {
-        $expenses = Expense::query()
+        $filters = $request->filters();
+        $query = Expense::query()
             ->forTeam($current_team)
-            ->with(['businessLocation', 'expenseCategory', 'contact'])
-            ->orderByDesc('transaction_date')
-            ->paginate(20)
-            ->withQueryString()
-            ->through(fn (Expense $e) => [
-                'id' => $e->id,
-                'ref_no' => $e->ref_no,
-                'transaction_date' => $e->transaction_date?->toIso8601String(),
-                'final_total' => (string) $e->final_total,
-                'is_refund' => $e->is_refund,
-                'business_location' => $e->businessLocation ? [
-                    'id' => $e->businessLocation->id,
-                    'name' => $e->businessLocation->name,
-                ] : null,
-                'expense_category' => $e->expenseCategory ? [
-                    'id' => $e->expenseCategory->id,
-                    'name' => $e->expenseCategory->name,
-                ] : null,
-                'contact' => $e->contact ? [
-                    'id' => $e->contact->id,
-                    'display_name' => $e->contact->display_name,
-                ] : null,
-            ]);
+            ->with(['businessLocation', 'expenseCategory', 'contact']);
+
+        if (! empty($filters['search'])) {
+            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']).'%';
+            $query->where(function ($q) use ($term) {
+                $q->where('ref_no', 'like', $term)
+                    ->orWhereHas('businessLocation', fn ($l) => $l->where('name', 'like', $term))
+                    ->orWhereHas('expenseCategory', fn ($c) => $c->where('name', 'like', $term))
+                    ->orWhereHas('contact', function ($c) use ($term) {
+                        $c->where('business_name', 'like', $term)
+                            ->orWhere('first_name', 'like', $term)
+                            ->orWhere('last_name', 'like', $term)
+                            ->orWhere('customer_code', 'like', $term);
+                    });
+            });
+        }
+
+        $sort = $filters['sort'] ?? 'transaction_date';
+        $direction = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $allowedSort = ['id', 'transaction_date', 'final_total', 'ref_no', 'created_at'];
+        $query->orderBy(
+            in_array($sort, $allowedSort, true) ? $sort : 'transaction_date',
+            $direction
+        );
+
+        $perPage = min(100, max(10, (int) ($filters['per_page'] ?? 15)));
+        $paginator = $query->paginate($perPage)->withQueryString();
+        $paginator->through(fn (Expense $e) => [
+            'id' => $e->id,
+            'ref_no' => $e->ref_no,
+            'transaction_date' => $e->transaction_date?->toIso8601String(),
+            'final_total' => (string) $e->final_total,
+            'is_refund' => $e->is_refund,
+            'business_location' => $e->businessLocation ? [
+                'id' => $e->businessLocation->id,
+                'name' => $e->businessLocation->name,
+            ] : null,
+            'expense_category' => $e->expenseCategory ? [
+                'id' => $e->expenseCategory->id,
+                'name' => $e->expenseCategory->name,
+            ] : null,
+            'contact' => $e->contact ? [
+                'id' => $e->contact->id,
+                'display_name' => $e->contact->display_name,
+            ] : null,
+        ]);
 
         return Inertia::render('expenses/Index', [
-            'expenses' => $expenses,
+            'expenses' => $paginator,
+            'filters' => [
+                'search' => $filters['search'] ?? '',
+                'sort' => $filters['sort'] ?? 'transaction_date',
+                'direction' => $filters['direction'] ?? 'desc',
+                'per_page' => $filters['per_page'] ?? 15,
+            ],
         ]);
     }
 
