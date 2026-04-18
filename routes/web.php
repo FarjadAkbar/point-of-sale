@@ -5,6 +5,7 @@ use App\Http\Controllers\Brands\BrandController;
 use App\Http\Controllers\BusinessLocations\BusinessLocationController;
 use App\Http\Controllers\CustomerGroups\CustomerGroupController;
 use App\Http\Controllers\Customers\CustomerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Expenses\ExpenseCategoryController;
 use App\Http\Controllers\Expenses\ExpenseController;
 use App\Http\Controllers\Kitchen\KitchenController;
@@ -78,7 +79,7 @@ Route::get('/', function () {
 Route::prefix('{current_team}')
     ->middleware(['auth', 'verified', EnsureTeamMembership::class])
     ->group(function () {
-        Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+        Route::get('dashboard', DashboardController::class)->name('dashboard');
 
         Route::get('kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
 

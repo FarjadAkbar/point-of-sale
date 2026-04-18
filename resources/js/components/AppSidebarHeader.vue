@@ -29,6 +29,7 @@ import { Spinner } from '@/components/ui/spinner';
 import UserMenuContent from '@/components/UserMenuContent.vue';
 import { getInitials } from '@/composables/useInitials';
 import { dashboard } from '@/routes';
+import posRoutes from '@/routes/pos';
 import reportRoutes from '@/routes/reports';
 import type { BreadcrumbItem } from '@/types';
 
@@ -51,6 +52,12 @@ const teamSlug = computed(
 const dashboardUrl = computed(() =>
     page.props.currentTeam
         ? dashboard(page.props.currentTeam.slug).url
+        : '/',
+);
+
+const posUrl = computed(() =>
+    page.props.currentTeam
+        ? posRoutes.index.url(page.props.currentTeam.slug)
         : '/',
 );
 
@@ -660,7 +667,7 @@ watch(todayProfitOpen, (open) => {
                     class="hidden h-8 bg-primary px-3 text-primary-foreground shadow-sm hover:bg-primary/90 sm:inline-flex"
                     as-child
                 >
-                    <Link :href="dashboardUrl">POS</Link>
+                    <Link :href="posUrl">POS</Link>
                 </Button>
                 <span
                     class="hidden text-xs text-emerald-100/90 tabular-nums sm:inline"
