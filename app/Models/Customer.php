@@ -148,6 +148,28 @@ class Customer extends Model
     }
 
     /**
+     * Default POS walk-in customer (one per team, stable customer_code).
+     */
+    public static function ensurePosWalkInForTeam(Team $team): self
+    {
+        return static::query()->firstOrCreate(
+            [
+                'team_id' => $team->id,
+                'customer_code' => 'POS_WALKIN',
+            ],
+            [
+                'party_role' => 'customer',
+                'entity_type' => 'individual',
+                'business_name' => null,
+                'first_name' => 'Walk-In',
+                'last_name' => 'Customer',
+                'mobile' => '0000000000',
+                'opening_balance' => 0,
+            ],
+        );
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @param  array<string, mixed>  $filters
      * @return Builder<static>

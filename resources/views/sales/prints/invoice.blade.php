@@ -91,5 +91,10 @@
             </tbody>
         </table>
     @endif
+    @if (request()->boolean('autoprint'))
+        <script>
+            addEventListener('load', () => setTimeout(() => window.print(), 200));
+        </script>
+    @endif
 </body>
 </html>

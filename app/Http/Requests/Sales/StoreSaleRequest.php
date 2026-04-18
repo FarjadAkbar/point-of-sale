@@ -41,6 +41,13 @@ class StoreSaleRequest extends FormRequest
             }
         }
 
+        if (is_string($this->input('payments'))) {
+            $decoded = json_decode($this->input('payments'), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $this->merge(['payments' => $decoded]);
+            }
+        }
+
         foreach (['invoice_no', 'shipping_details', 'shipping_address', 'sale_note'] as $k) {
             if ($this->input($k) === '') {
                 $this->merge([$k => null]);
@@ -64,6 +71,20 @@ class StoreSaleRequest extends FormRequest
         if (is_array($pay) && array_key_exists('payment_account_id', $pay) && $pay['payment_account_id'] === '') {
             $pay['payment_account_id'] = null;
             $this->merge(['payment' => $pay]);
+        }
+
+        $payments = $this->input('payments');
+        if (is_array($payments)) {
+            foreach ($payments as $i => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                if (array_key_exists('payment_account_id', $row) && $row['payment_account_id'] === '') {
+                    $row['payment_account_id'] = null;
+                    $payments[$i] = $row;
+                }
+            }
+            $this->merge(['payments' => $payments]);
         }
 
         foreach (['selling_price_group_id', 'restaurant_table_id', 'service_staff_id'] as $k) {
@@ -121,10 +142,10 @@ class StoreSaleRequest extends FormRequest
             'lines.*.unit_price_before_discount' => ['required', 'numeric', 'min:0'],
             'lines.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.product_tax_percent' => ['nullable', 'numeric', 'min:0'],
-            'payment' => ['required', 'array'],
-            'payment.amount' => ['required', 'numeric', 'min:0'],
-            'payment.paid_on' => ['required', 'date'],
-            'payment.method' => ['required', 'string', Rule::in(['cash', 'bank_transfer'])],
+            'payment' => ['nullable', 'array'],
+            'payment.amount' => ['nullable', 'numeric', 'min:0'],
+            'payment.paid_on' => ['nullable', 'date'],
+            'payment.method' => ['nullable', 'string', Rule::in(['cash', 'bank_transfer'])],
             'payment.payment_account_id' => [
                 'nullable',
                 'integer',
@@ -132,6 +153,17 @@ class StoreSaleRequest extends FormRequest
             ],
             'payment.note' => ['nullable', 'string', 'max:5000'],
             'payment.bank_account_number' => ['nullable', 'string', 'max:255'],
+            'payments' => ['nullable', 'array', 'min:1', 'max:12'],
+            'payments.*.amount' => ['required', 'numeric', 'min:0'],
+            'payments.*.paid_on' => ['required', 'date'],
+            'payments.*.method' => ['required', 'string', Rule::in(['cash', 'bank_transfer'])],
+            'payments.*.payment_account_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('payment_accounts', 'id')->where('team_id', $team->id),
+            ],
+            'payments.*.note' => ['nullable', 'string', 'max:5000'],
+            'payments.*.bank_account_number' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -143,29 +175,72 @@ class StoreSaleRequest extends FormRequest
 
             if ($this->input('status') !== 'quotation') {
                 $settings = $team->resolvedPaymentSettings();
-                $method = $this->input('payment.method');
+                $paymentRows = $this->input('payments');
+                $hasMulti = is_array($paymentRows) && count($paymentRows) > 0;
 
-                if ($method === 'cash' && ! $settings['cash_enabled']) {
-                    $v->errors()->add('payment.method', 'Cash payments are disabled for this business.');
-                }
+                if ($hasMulti) {
+                    foreach ($paymentRows as $i => $row) {
+                        if (! is_array($row)) {
+                            continue;
+                        }
+                        $method = $row['method'] ?? null;
+                        if ($method === 'cash' && ! $settings['cash_enabled']) {
+                            $v->errors()->add("payments.$i.method", 'Cash payments are disabled for this business.');
+                        }
+                        if ($method === 'bank_transfer' && ! $settings['bank_transfer_enabled']) {
+                            $v->errors()->add("payments.$i.method", 'Bank transfer payments are disabled for this business.');
+                        }
+                        $accountId = $row['payment_account_id'] ?? null;
+                        if ($accountId) {
+                            $account = PaymentAccount::query()
+                                ->forTeam($team)
+                                ->whereKey($accountId)
+                                ->first();
+                            if (! $account || ! $account->is_active) {
+                                $v->errors()->add("payments.$i.payment_account_id", 'Invalid payment account.');
 
-                if ($method === 'bank_transfer' && ! $settings['bank_transfer_enabled']) {
-                    $v->errors()->add('payment.method', 'Bank transfer payments are disabled for this business.');
-                }
-
-                $accountId = $this->input('payment.payment_account_id');
-                if ($accountId) {
-                    $account = PaymentAccount::query()
-                        ->forTeam($team)
-                        ->whereKey($accountId)
-                        ->first();
-                    if (! $account || ! $account->is_active) {
-                        $v->errors()->add('payment.payment_account_id', 'Invalid payment account.');
+                                continue;
+                            }
+                            if ($account->payment_method !== $method) {
+                                $v->errors()->add("payments.$i.payment_account_id", 'The account does not match the payment method.');
+                            }
+                        }
+                    }
+                } else {
+                    $pay = $this->input('payment');
+                    if (! is_array($pay)) {
+                        $v->errors()->add('payment', 'A payment is required.');
 
                         return;
                     }
-                    if ($account->payment_method !== $method) {
-                        $v->errors()->add('payment.payment_account_id', 'The account does not match the payment method.');
+                    foreach (['amount', 'paid_on', 'method'] as $pk) {
+                        if (! array_key_exists($pk, $pay) || $pay[$pk] === '' || $pay[$pk] === null) {
+                            $v->errors()->add('payment', 'Payment amount, date, and method are required.');
+
+                            return;
+                        }
+                    }
+                    $method = $pay['method'] ?? null;
+                    if ($method === 'cash' && ! $settings['cash_enabled']) {
+                        $v->errors()->add('payment.method', 'Cash payments are disabled for this business.');
+                    }
+                    if ($method === 'bank_transfer' && ! $settings['bank_transfer_enabled']) {
+                        $v->errors()->add('payment.method', 'Bank transfer payments are disabled for this business.');
+                    }
+                    $accountId = $pay['payment_account_id'] ?? null;
+                    if ($accountId) {
+                        $account = PaymentAccount::query()
+                            ->forTeam($team)
+                            ->whereKey($accountId)
+                            ->first();
+                        if (! $account || ! $account->is_active) {
+                            $v->errors()->add('payment.payment_account_id', 'Invalid payment account.');
+
+                            return;
+                        }
+                        if ($account->payment_method !== $method) {
+                            $v->errors()->add('payment.payment_account_id', 'The account does not match the payment method.');
+                        }
                     }
                 }
             }
@@ -223,6 +298,23 @@ class StoreSaleRequest extends FormRequest
                                 'Insufficient stock at this location for '.$product->name.'.',
                             );
                         }
+                    }
+                }
+            }
+
+            if ($this->input('status') === 'final') {
+                $paymentRows = $this->input('payments');
+                $hasMulti = is_array($paymentRows) && count($paymentRows) > 0;
+                if ($hasMulti) {
+                    $sum = 0.0;
+                    foreach ($paymentRows as $row) {
+                        if (! is_array($row)) {
+                            continue;
+                        }
+                        $sum += (float) ($row['amount'] ?? 0);
+                    }
+                    if ($sum <= 0) {
+                        $v->errors()->add('payments', 'Enter at least one payment with a positive amount.');
                     }
                 }
             }

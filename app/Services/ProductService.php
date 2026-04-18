@@ -139,7 +139,7 @@ class ProductService
     /**
      * @return Builder<Product>
      */
-    public function searchQuery(Team $team, string $term, bool $sellableOnly = false, ?int $businessLocationId = null, ?int $categoryId = null): Builder
+    public function searchQuery(Team $team, string $term, bool $sellableOnly = false, ?int $businessLocationId = null, ?int $categoryId = null, ?int $brandId = null): Builder
     {
         $term = trim($term);
 
@@ -155,6 +155,10 @@ class ProductService
 
         if ($categoryId !== null && $categoryId > 0) {
             $query->where('category_id', $categoryId);
+        }
+
+        if ($brandId !== null && $brandId > 0) {
+            $query->where('brand_id', $brandId);
         }
 
         if ($sellableOnly) {

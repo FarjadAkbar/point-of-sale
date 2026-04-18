@@ -264,8 +264,14 @@ class ProductController extends Controller
             $categoryId = null;
         }
 
+        $brandRaw = $request->query('brand_id');
+        $brandId = is_numeric($brandRaw) ? (int) $brandRaw : null;
+        if ($brandId !== null && $brandId < 1) {
+            $brandId = null;
+        }
+
         $rows = $this->productService
-            ->searchQuery($current_team, $q, $sellableOnly, $businessLocationId, $categoryId)
+            ->searchQuery($current_team, $q, $sellableOnly, $businessLocationId, $categoryId, $brandId)
             ->get([
                 'id',
                 'name',

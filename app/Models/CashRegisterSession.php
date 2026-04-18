@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'status',
     'opened_at',
     'closed_at',
+    'opening_cash',
     'total_card_slips',
     'total_cheque',
     'total_cash',
@@ -64,11 +65,21 @@ class CashRegisterSession extends Model
         return $query->where($query->qualifyColumn('team_id'), $team->id);
     }
 
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeOpen($query)
+    {
+        return $query->where($query->qualifyColumn('status'), 'open');
+    }
+
     protected function casts(): array
     {
         return [
             'opened_at' => 'datetime',
             'closed_at' => 'datetime',
+            'opening_cash' => 'decimal:4',
             'total_card_slips' => 'decimal:4',
             'total_cheque' => 'decimal:4',
             'total_cash' => 'decimal:4',

@@ -17,8 +17,11 @@ trait BuildsSaleFormPageProps
      */
     protected function saleFormPageProps(Team $current_team, bool $isDraftSale = false, bool $isQuotationSale = false): array
     {
+        $walkIn = Customer::ensurePosWalkInForTeam($current_team);
+
         $customers = Customer::query()
             ->forTeam($current_team)
+            ->orderByRaw("CASE WHEN customer_code = 'POS_WALKIN' THEN 0 ELSE 1 END")
             ->orderBy('business_name')
             ->orderBy('first_name')
             ->get();
@@ -72,6 +75,7 @@ trait BuildsSaleFormPageProps
 
         return [
             'customers' => $customerRows,
+            'walkInCustomerId' => $walkIn->id,
             'businessLocations' => $locations,
             'taxRates' => $taxRates,
             'paymentAccounts' => $paymentAccounts,

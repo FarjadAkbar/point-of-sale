@@ -12,6 +12,7 @@ use App\Http\Controllers\ModifierSets\ModifierSetController;
 use App\Http\Controllers\Orders\OrderController;
 use App\Http\Controllers\PaymentAccounts\AccountTypeController;
 use App\Http\Controllers\PaymentAccounts\PaymentAccountController;
+use App\Http\Controllers\Pos\CashRegisterController;
 use App\Http\Controllers\Pos\PosController;
 use App\Http\Controllers\ProductCategories\ProductCategoryController;
 use App\Http\Controllers\Products\ProductController;
@@ -195,7 +196,10 @@ Route::prefix('{current_team}')
         Route::get('purchase-returns', [PurchaseReturnController::class, 'index'])->name('purchase-returns.index');
 
         Route::get('pos/list', [PosController::class, 'list'])->name('pos.list');
+        Route::get('pos/recent-transactions', [PosController::class, 'recentTransactions'])->name('pos.recent-transactions');
         Route::post('pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
+        Route::post('cash-register', [CashRegisterController::class, 'store'])->name('cash-register.store');
+        Route::post('cash-register/close', [CashRegisterController::class, 'close'])->name('cash-register.close');
         Route::get('pos', [PosController::class, 'index'])->name('pos.index');
 
         Route::resource('booking', BookingController::class)->except([

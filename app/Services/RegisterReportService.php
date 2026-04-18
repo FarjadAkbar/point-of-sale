@@ -58,6 +58,7 @@ class RegisterReportService
             'id' => $s->id,
             'open_time' => $s->opened_at?->toIso8601String() ?? '',
             'close_time' => $s->closed_at?->toIso8601String() ?? '',
+            'opening_cash' => $this->nf((float) $s->opening_cash),
             'location' => $s->businessLocation?->name ?? '—',
             'user' => $s->user?->name ?? '—',
             'total_card_slips' => $this->nf((float) $s->total_card_slips),

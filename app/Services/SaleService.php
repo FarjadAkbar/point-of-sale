@@ -81,15 +81,30 @@ class SaleService
                 $sale->lines()->create($line);
             }
 
-            if (($data['status'] ?? '') !== 'quotation' && isset($data['payment']) && is_array($data['payment'])) {
-                $sale->payments()->create([
-                    'amount' => round((float) $data['payment']['amount'], 4),
-                    'paid_on' => $data['payment']['paid_on'],
-                    'method' => $data['payment']['method'],
-                    'payment_account_id' => $data['payment']['payment_account_id'] ?? null,
-                    'note' => $data['payment']['note'] ?? null,
-                    'bank_account_number' => $data['payment']['bank_account_number'] ?? null,
-                ]);
+            if (($data['status'] ?? '') !== 'quotation') {
+                $paymentRows = [];
+                if (! empty($data['payments']) && is_array($data['payments'])) {
+                    $paymentRows = $data['payments'];
+                } elseif (isset($data['payment']) && is_array($data['payment'])) {
+                    $paymentRows = [$data['payment']];
+                }
+                foreach ($paymentRows as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $amt = round((float) ($row['amount'] ?? 0), 4);
+                    if ($amt <= 0) {
+                        continue;
+                    }
+                    $sale->payments()->create([
+                        'amount' => $amt,
+                        'paid_on' => $row['paid_on'],
+                        'method' => $row['method'],
+                        'payment_account_id' => $row['payment_account_id'] ?? null,
+                        'note' => $row['note'] ?? null,
+                        'bank_account_number' => $row['bank_account_number'] ?? null,
+                    ]);
+                }
             }
 
             $sale->load(['customer', 'businessLocation', 'lines.product']);

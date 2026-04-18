@@ -19,7 +19,12 @@ class StoreQuotationSaleRequest extends StoreSaleRequest
     {
         $rules = parent::rules();
         foreach (array_keys($rules) as $key) {
-            if ($key === 'payment' || str_starts_with($key, 'payment.')) {
+            if (
+                $key === 'payment'
+                || str_starts_with($key, 'payment.')
+                || $key === 'payments'
+                || str_starts_with($key, 'payments.')
+            ) {
                 unset($rules[$key]);
             }
         }
