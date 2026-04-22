@@ -60,12 +60,15 @@ class TeamInvitationController extends Controller
         DB::transaction(function () use ($user, $invitation) {
             $team = $invitation->team;
 
-            $membership = $team->memberships()->firstOrCreate(
-                ['user_id' => $user->id],
-                ['role' => $invitation->role],
-            );
+            $cashier = $team->posRoles()->where('name', 'Cashier')->first();
 
-            $wasRecentlyCreated = $membership->wasRecentlyCreated;
+            $team->memberships()->firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'role' => $invitation->role,
+                    'pos_role_id' => $cashier?->id,
+                ],
+            );
 
             $invitation->update(['accepted_at' => now()]);
 

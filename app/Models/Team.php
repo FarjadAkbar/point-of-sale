@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\GeneratesUniqueTeamSlugs;
 use App\Enums\TeamRole;
+use App\Services\PosRoleDefaults;
 use Database\Factories\TeamFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,6 +25,10 @@ class Team extends Model
     protected static function boot(): void
     {
         parent::boot();
+
+        static::created(function (Team $team): void {
+            PosRoleDefaults::ensure($team);
+        });
 
         static::creating(function (Team $team) {
             if (empty($team->slug)) {
@@ -57,7 +62,7 @@ class Team extends Model
     {
         return $this->belongsToMany(User::class, 'team_members', 'team_id', 'user_id')
             ->using(Membership::class)
-            ->withPivot(['role'])
+            ->withPivot(['role', 'pos_role_id', 'settings'])
             ->withTimestamps();
     }
 
@@ -69,6 +74,14 @@ class Team extends Model
     public function memberships(): HasMany
     {
         return $this->hasMany(Membership::class);
+    }
+
+    /**
+     * @return HasMany<PosRole, $this>
+     */
+    public function posRoles(): HasMany
+    {
+        return $this->hasMany(PosRole::class);
     }
 
     /**

@@ -24,7 +24,7 @@ trait HasTeams
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class, 'team_members', 'user_id', 'team_id')
-            ->withPivot(['role'])
+            ->withPivot(['role', 'pos_role_id', 'settings'])
             ->withTimestamps();
     }
 
@@ -191,5 +191,62 @@ trait HasTeams
     public function hasTeamPermission(Team $team, string $permission): bool
     {
         return $this->teamRole($team)?->hasPermission($permission) ?? false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function teamPosPermissions(Team $team): array
+    {
+        $membership = $this->teamMembership($team);
+        $posRole = $membership?->posRole;
+        if (! $posRole) {
+            return [];
+        }
+
+        $checkboxes = $posRole->permissions ?? [];
+        $radios = array_values(array_filter($posRole->radio_options ?? []));
+
+        return array_values(array_unique(array_merge($checkboxes, $radios)));
+    }
+
+    public function hasPosPermission(Team $team, string $permission): bool
+    {
+        if ($this->ownsTeam($team)) {
+            return true;
+        }
+
+        return in_array($permission, $this->teamPosPermissions($team), true);
+    }
+
+    /**
+     * @param  array<int, string>  $permissions
+     */
+    public function hasAnyPosPermission(Team $team, array $permissions): bool
+    {
+        if ($this->ownsTeam($team)) {
+            return true;
+        }
+
+        if ($permissions === []) {
+            return true;
+        }
+
+        $granted = $this->teamPosPermissions($team);
+        foreach ($permissions as $permission) {
+            if (in_array($permission, $granted, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function teamMembership(Team $team): ?Membership
+    {
+        return $this->teamMemberships()
+            ->where('team_id', $team->id)
+            ->with('posRole')
+            ->first();
     }
 }

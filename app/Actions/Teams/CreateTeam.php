@@ -20,9 +20,12 @@ class CreateTeam
                 'is_personal' => $isPersonal,
             ]);
 
-            $membership = $team->memberships()->create([
+            $adminPosRole = $team->posRoles()->where('name', 'Admin')->first();
+
+            $team->memberships()->create([
                 'user_id' => $user->id,
                 'role' => TeamRole::Owner,
+                'pos_role_id' => $adminPosRole?->id,
             ]);
 
             $user->switchTeam($team);

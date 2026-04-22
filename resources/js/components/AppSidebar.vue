@@ -44,7 +44,6 @@ import {
 import { computed, ref, watch } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavUser from '@/components/NavUser.vue';
-import TeamSwitcher from '@/components/TeamSwitcher.vue';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
     Sidebar,
@@ -70,9 +69,12 @@ import customerGroups from '@/routes/customer-groups';
 import customers from '@/routes/customers';
 import expenseCategories from '@/routes/expense-categories';
 import expenses from '@/routes/expenses';
+import kitchenRoutes from '@/routes/kitchen';
+import orderRoutes from '@/routes/order';
 import paymentAccounts from '@/routes/payment-accounts';
 import paymentSettingsRoutes from '@/routes/payment-settings';
 import posRoutes from '@/routes/pos';
+import posRoleRoutes from '@/routes/pos-roles';
 import productCategories from '@/routes/product-categories';
 import products from '@/routes/products';
 import purchaseReturnRoutes from '@/routes/purchase-returns';
@@ -90,14 +92,27 @@ import stockAdjustments from '@/routes/stock-adjustments';
 import stockTransfers from '@/routes/stock-transfers';
 import suppliers from '@/routes/suppliers';
 import taxesPageRoutes from '@/routes/taxes';
+import teamUserRoutes from '@/routes/team-users';
 import units from '@/routes/units';
 import variationTemplates from '@/routes/variation-templates';
 import warranties from '@/routes/warranties';
-import kitchenRoutes from '@/routes/kitchen';
-import orderRoutes from '@/routes/order';
 
 const page = usePage();
 const { isCurrentUrl } = useCurrentUrl();
+
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+
+const hasAnyPosPermission = (permissions: string[]): boolean => {
+    if (permissions.length === 0) {
+        return true;
+    }
+
+    return permissions.some((permission) => posPermissions.value.includes(permission));
+};
 
 const dashboardUrl = computed(() =>
     page.props.currentTeam ? dashboard(page.props.currentTeam.slug).url : '/',
@@ -218,6 +233,18 @@ const productsPrintLabelsUrl = computed(() =>
 const salesCommissionAgentsUrl = computed(() =>
     page.props.currentTeam
         ? salesCommissionAgentRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const posRolesUrl = computed(() =>
+    page.props.currentTeam
+        ? posRoleRoutes.index.url(page.props.currentTeam.slug)
+        : '/',
+);
+
+const teamUsersUrl = computed(() =>
+    page.props.currentTeam
+        ? teamUserRoutes.index.url(page.props.currentTeam.slug)
         : '/',
 );
 
@@ -532,9 +559,18 @@ watch(
 );
 
 watch(
-    () => [page.url, salesCommissionAgentsUrl.value] as const,
+    () =>
+        [
+            page.url,
+            salesCommissionAgentsUrl.value,
+            posRolesUrl.value,
+            teamUsersUrl.value,
+        ] as const,
     () => {
-        userManagementOpen.value = isCurrentUrl(salesCommissionAgentsUrl.value);
+        userManagementOpen.value =
+            isCurrentUrl(salesCommissionAgentsUrl.value) ||
+            isCurrentUrl(posRolesUrl.value) ||
+            isCurrentUrl(teamUsersUrl.value);
     },
     { immediate: true },
 );
@@ -730,18 +766,13 @@ watch(
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <TeamSwitcher />
-                </SidebarMenuItem>
-            </SidebarMenu>
         </SidebarHeader>
 
         <SidebarContent>
             <SidebarGroup class="px-2 py-0">
                 <SidebarGroupLabel>Menu</SidebarGroupLabel>
                 <SidebarMenu>
-                    <SidebarMenuItem>
+                    <SidebarMenuItem v-if="hasAnyPosPermission(['dashboard.data'])">
                         <SidebarMenuButton
                             as-child
                             :is-active="isCurrentUrl(dashboardUrl)"
@@ -755,6 +786,19 @@ watch(
                     </SidebarMenuItem>
 
                     <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'roles.view',
+                                'roles.create',
+                                'roles.update',
+                                'roles.delete',
+                                'user.view',
+                                'user.create',
+                                'user.update',
+                                'user.delete',
+                                'sales_representative.view',
+                            ])
+                        "
                         v-model:open="userManagementOpen"
                         class="group/collapsible"
                     >
@@ -762,7 +806,9 @@ watch(
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
                                     :is-active="
-                                        isCurrentUrl(salesCommissionAgentsUrl)
+                                        isCurrentUrl(salesCommissionAgentsUrl) ||
+                                        isCurrentUrl(posRolesUrl) ||
+                                        isCurrentUrl(teamUsersUrl)
                                     "
                                     tooltip="User management"
                                 >
@@ -775,7 +821,59 @@ watch(
                             </CollapsibleTrigger>
                             <CollapsibleContent>
                                 <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'roles.view',
+                                                'roles.create',
+                                                'roles.update',
+                                                'roles.delete',
+                                            ])
+                                        "
+                                    >
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(posRolesUrl)
+                                            "
+                                        >
+                                            <Link :href="posRolesUrl">
+                                                <Shield />
+                                                <span>Roles</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'user.view',
+                                                'user.create',
+                                                'user.update',
+                                                'user.delete',
+                                            ])
+                                        "
+                                    >
+                                        <SidebarMenuSubButton
+                                            as-child
+                                            size="sm"
+                                            :is-active="
+                                                isCurrentUrl(teamUsersUrl)
+                                            "
+                                        >
+                                            <Link :href="teamUsersUrl">
+                                                <Users />
+                                                <span>Users</span>
+                                            </Link>
+                                        </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'sales_representative.view',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -798,7 +896,24 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <Collapsible v-model:open="contactsOpen" class="group/collapsible">
+                    <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'supplier.view',
+                                'supplier.view_own',
+                                'supplier.create',
+                                'supplier.update',
+                                'supplier.delete',
+                                'customer.view',
+                                'customer.view_own',
+                                'customer.create',
+                                'customer.update',
+                                'customer.delete',
+                            ])
+                        "
+                        v-model:open="contactsOpen"
+                        class="group/collapsible"
+                    >
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
@@ -818,7 +933,17 @@ watch(
                             </CollapsibleTrigger>
                             <CollapsibleContent>
                                 <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'supplier.view',
+                                                'supplier.view_own',
+                                                'supplier.create',
+                                                'supplier.update',
+                                                'supplier.delete',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -832,7 +957,17 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'customer.view',
+                                                'customer.view_own',
+                                                'customer.create',
+                                                'customer.update',
+                                                'customer.delete',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -846,7 +981,14 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'customer.view',
+                                                'customer.view_own',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -865,7 +1007,40 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <Collapsible v-model:open="productsOpen" class="group/collapsible">
+                    <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'product.view',
+                                'product.create',
+                                'product.update',
+                                'product.delete',
+                                'product.print_labels',
+                                'variation.view',
+                                'variation.create',
+                                'variation.update',
+                                'variation.delete',
+                                'warranty.view',
+                                'warranty.create',
+                                'warranty.update',
+                                'warranty.delete',
+                                'access_default_selling_price',
+                                'brand.view',
+                                'brand.create',
+                                'brand.update',
+                                'brand.delete',
+                                'category.view',
+                                'category.create',
+                                'category.update',
+                                'category.delete',
+                                'unit.view',
+                                'unit.create',
+                                'unit.update',
+                                'unit.delete',
+                            ])
+                        "
+                        v-model:open="productsOpen"
+                        class="group/collapsible"
+                    >
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
@@ -891,7 +1066,16 @@ watch(
                             </CollapsibleTrigger>
                             <CollapsibleContent>
                                 <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'product.view',
+                                                'product.create',
+                                                'product.update',
+                                                'product.delete',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -905,7 +1089,13 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'product.create',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -919,7 +1109,13 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'product.print_labels',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -933,7 +1129,13 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'access_default_selling_price',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -951,7 +1153,16 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'variation.view',
+                                                'variation.create',
+                                                'variation.update',
+                                                'variation.delete',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -967,7 +1178,16 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'warranty.view',
+                                                'warranty.create',
+                                                'warranty.update',
+                                                'warranty.delete',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -981,7 +1201,16 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'brand.view',
+                                                'brand.create',
+                                                'brand.update',
+                                                'brand.delete',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -995,7 +1224,16 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'category.view',
+                                                'category.create',
+                                                'category.update',
+                                                'category.delete',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -1009,7 +1247,16 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="
+                                            hasAnyPosPermission([
+                                                'unit.view',
+                                                'unit.create',
+                                                'unit.update',
+                                                'unit.delete',
+                                            ])
+                                        "
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -1026,7 +1273,19 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <Collapsible v-model:open="purchasesOpen" class="group/collapsible">
+                    <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'purchase.view',
+                                'view_own_purchase',
+                                'purchase.create',
+                                'purchase.update',
+                                'purchase.delete',
+                            ])
+                        "
+                        v-model:open="purchasesOpen"
+                        class="group/collapsible"
+                    >
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
@@ -1095,7 +1354,23 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <Collapsible v-model:open="sellOpen" class="group/collapsible">
+                    <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'direct_sell.view',
+                                'view_own_sell_only',
+                                'direct_sell.access',
+                                'direct_sell.update',
+                                'direct_sell.delete',
+                                'sell.view',
+                                'sell.create',
+                                'sell.update',
+                                'sell.delete',
+                            ])
+                        "
+                        v-model:open="sellOpen"
+                        class="group/collapsible"
+                    >
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
@@ -1291,6 +1566,15 @@ watch(
                     </Collapsible>
 
                     <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'stock_transfer.view',
+                                'stock_transfer.view_own',
+                                'stock_transfer.create',
+                                'stock_transfer.update',
+                                'stock_transfer.delete',
+                            ])
+                        "
                         v-model:open="stockTransfersOpen"
                         class="group/collapsible"
                     >
@@ -1350,6 +1634,15 @@ watch(
                     </Collapsible>
 
                     <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'stock_adjustment.view',
+                                'view_own_stock_adjustment',
+                                'stock_adjustment.create',
+                                'stock_adjustment.update',
+                                'stock_adjustment.delete',
+                            ])
+                        "
                         v-model:open="stockAdjustmentsOpen"
                         class="group/collapsible"
                     >
@@ -1410,7 +1703,11 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <Collapsible v-model:open="paymentNavOpen" class="group/collapsible">
+                    <Collapsible
+                        v-if="hasAnyPosPermission(['account.access'])"
+                        v-model:open="paymentNavOpen"
+                        class="group/collapsible"
+                    >
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
@@ -1465,7 +1762,19 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <Collapsible v-model:open="expensesOpen" class="group/collapsible">
+                    <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'all_expense.access',
+                                'view_own_expense',
+                                'expense.add',
+                                'expense.edit',
+                                'expense.delete',
+                            ])
+                        "
+                        v-model:open="expensesOpen"
+                        class="group/collapsible"
+                    >
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
@@ -1534,7 +1843,23 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <Collapsible v-model:open="reportsOpen" class="group/collapsible">
+                    <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'purchase_n_sell_report.view',
+                                'tax_report.view',
+                                'contacts_report.view',
+                                'expense_report.view',
+                                'profit_loss_report.view',
+                                'stock_report.view',
+                                'trending_product_report.view',
+                                'register_report.view',
+                                'sales_representative.view',
+                            ])
+                        "
+                        v-model:open="reportsOpen"
+                        class="group/collapsible"
+                    >
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
@@ -1774,7 +2099,14 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <SidebarMenuItem>
+                    <SidebarMenuItem
+                        v-if="
+                            hasAnyPosPermission([
+                                'crud_all_bookings',
+                                'crud_own_bookings',
+                            ])
+                        "
+                    >
                         <SidebarMenuButton
                             as-child
                             :is-active="isCurrentUrl(bookingUrl)"
@@ -1786,7 +2118,11 @@ watch(
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
-                    <Collapsible v-model:open="orderNavOpen" class="group/collapsible">
+                    <Collapsible
+                        v-if="hasAnyPosPermission(['kitchen.access', 'order.access'])"
+                        v-model:open="orderNavOpen"
+                        class="group/collapsible"
+                    >
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton
@@ -1802,7 +2138,9 @@ watch(
                             </CollapsibleTrigger>
                             <CollapsibleContent>
                                 <SidebarMenuSub>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="hasAnyPosPermission(['kitchen.access'])"
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -1814,7 +2152,9 @@ watch(
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
+                                    <SidebarMenuSubItem
+                                        v-if="hasAnyPosPermission(['order.access'])"
+                                    >
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
@@ -1840,7 +2180,19 @@ watch(
                         </SidebarMenuButton>
                     </SidebarMenuItem>
 
-                    <Collapsible v-model:open="settingsOpen" class="group/collapsible">
+                    <Collapsible
+                        v-if="
+                            hasAnyPosPermission([
+                                'tax_rate.view',
+                                'barcode_settings.access',
+                                'business_settings.access',
+                                'access_printers',
+                                'access_tables',
+                            ])
+                        "
+                        v-model:open="settingsOpen"
+                        class="group/collapsible"
+                    >
                         <SidebarMenuItem>
                             <CollapsibleTrigger as-child>
                                 <SidebarMenuButton

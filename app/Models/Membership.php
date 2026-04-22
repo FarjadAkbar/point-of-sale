@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
-#[Fillable(['team_id', 'user_id', 'role'])]
+#[Fillable(['team_id', 'user_id', 'role', 'pos_role_id', 'settings'])]
 class Membership extends Pivot
 {
     /**
@@ -54,6 +54,15 @@ class Membership extends Pivot
     {
         return [
             'role' => TeamRole::class,
+            'settings' => 'array',
         ];
+    }
+
+    /**
+     * @return BelongsTo<PosRole, $this>
+     */
+    public function posRole(): BelongsTo
+    {
+        return $this->belongsTo(PosRole::class);
     }
 }
