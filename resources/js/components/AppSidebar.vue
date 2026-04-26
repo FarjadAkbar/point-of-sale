@@ -1020,11 +1020,13 @@ watch(
                                 'variation.update',
                                 'variation.delete',
                                 'warranty.view',
+                                'warranty.view_own',
                                 'warranty.create',
                                 'warranty.update',
                                 'warranty.delete',
                                 'access_default_selling_price',
                                 'brand.view',
+                                'brand.view_own',
                                 'brand.create',
                                 'brand.update',
                                 'brand.delete',
@@ -1033,6 +1035,7 @@ watch(
                                 'category.update',
                                 'category.delete',
                                 'unit.view',
+                                'unit.view_own',
                                 'unit.create',
                                 'unit.update',
                                 'unit.delete',
@@ -1182,6 +1185,7 @@ watch(
                                         v-if="
                                             hasAnyPosPermission([
                                                 'warranty.view',
+                                                'warranty.view_own',
                                                 'warranty.create',
                                                 'warranty.update',
                                                 'warranty.delete',
@@ -1205,6 +1209,7 @@ watch(
                                         v-if="
                                             hasAnyPosPermission([
                                                 'brand.view',
+                                                'brand.view_own',
                                                 'brand.create',
                                                 'brand.update',
                                                 'brand.delete',
@@ -1251,6 +1256,7 @@ watch(
                                         v-if="
                                             hasAnyPosPermission([
                                                 'unit.view',
+                                                'unit.view_own',
                                                 'unit.create',
                                                 'unit.update',
                                                 'unit.delete',
@@ -1810,6 +1816,11 @@ watch(
                                     </SidebarMenuSubItem>
                                     <SidebarMenuSubItem>
                                         <SidebarMenuSubButton
+                                            v-if="
+                                                hasAnyPosPermission([
+                                                    'expense.add',
+                                                ])
+                                            "
                                             as-child
                                             size="sm"
                                             :is-active="
@@ -1852,6 +1863,7 @@ watch(
                                 'expense_report.view',
                                 'profit_loss_report.view',
                                 'stock_report.view',
+                                'view_product_stock_value',
                                 'trending_product_report.view',
                                 'register_report.view',
                                 'sales_representative.view',

@@ -10,6 +10,7 @@ use App\Http\Requests\Customers\UpdateCustomerRequest;
 use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\CustomerService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +30,8 @@ class CustomerController extends Controller
     public function index(CustomerIndexRequest $request, Team $current_team): Response
     {
         $filters = $request->filters();
+        $permissionFilters = $this->customerPermissionFilters($request->user(), $current_team);
+        $filters = array_merge($filters, $permissionFilters);
         $paginator = $this->customerService->paginate($current_team, $filters);
         $paginator->through(fn (Customer $customer) => (new CustomerResource($customer))->resolve());
 
@@ -40,7 +43,10 @@ class CustomerController extends Controller
 
         $editing = null;
         if ($editId = $request->query('edit')) {
-            $editing = $current_team->customers()->whereKey($editId)->first();
+            $candidate = $current_team->customers()->whereKey($editId)->first();
+            if ($candidate && $this->canManageCustomer($request->user(), $current_team, $candidate)) {
+                $editing = $candidate;
+            }
             $editing?->load(['assignedUsers', 'contactPersons', 'customerGroup']);
         }
 
@@ -66,7 +72,18 @@ class CustomerController extends Controller
 
     public function store(StoreCustomerRequest $request, Team $current_team): RedirectResponse
     {
-        $this->customerService->create($current_team, $request->validated());
+        $data = $request->validated();
+        if (
+            ! $request->user()?->hasPosPermission($current_team, 'customer.view')
+            && $request->user()?->hasPosPermission($current_team, 'customer.view_own')
+        ) {
+            $data['assigned_to_users'] = array_values(array_unique(array_merge(
+                (array) ($data['assigned_to_users'] ?? []),
+                [$request->user()?->id],
+            )));
+        }
+
+        $this->customerService->create($current_team, $data);
 
         return to_route('customers.index', ['current_team' => $current_team])
             ->with('success', 'Customer created.');
@@ -74,7 +91,18 @@ class CustomerController extends Controller
 
     public function quickStore(StoreCustomerRequest $request, Team $current_team): JsonResponse
     {
-        $customer = $this->customerService->create($current_team, $request->validated());
+        $data = $request->validated();
+        if (
+            ! $request->user()?->hasPosPermission($current_team, 'customer.view')
+            && $request->user()?->hasPosPermission($current_team, 'customer.view_own')
+        ) {
+            $data['assigned_to_users'] = array_values(array_unique(array_merge(
+                (array) ($data['assigned_to_users'] ?? []),
+                [$request->user()?->id],
+            )));
+        }
+
+        $customer = $this->customerService->create($current_team, $data);
 
         return response()->json([
             'customer' => [
@@ -93,6 +121,7 @@ class CustomerController extends Controller
 
     public function update(UpdateCustomerRequest $request, Team $current_team, Customer $customer): RedirectResponse
     {
+        abort_unless($this->canManageCustomer($request->user(), $current_team, $customer), 403);
         $this->customerService->update($customer, $request->validated());
 
         return to_route('customers.index', ['current_team' => $current_team])
@@ -101,6 +130,7 @@ class CustomerController extends Controller
 
     public function destroy(Request $request, Team $current_team, Customer $customer): RedirectResponse
     {
+        abort_unless($this->canManageCustomer($request->user(), $current_team, $customer), 403);
         $this->customerService->delete($customer);
 
         return to_route('customers.index', ['current_team' => $current_team])
@@ -112,7 +142,10 @@ class CustomerController extends Controller
         $format = strtolower($format);
         abort_unless(in_array($format, ['csv', 'xlsx', 'pdf'], true), 404);
 
-        $filters = $request->filters();
+        $filters = array_merge(
+            $request->filters(),
+            $this->customerPermissionFilters($request->user(), $current_team),
+        );
         $export = new CustomersExport($current_team, $filters, $this->customerService);
 
         $filename = 'customers-'.now()->format('Y-m-d-His');
@@ -136,5 +169,60 @@ class CustomerController extends Controller
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download($filename.'.pdf');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customerPermissionFilters(?User $user, Team $team): array
+    {
+        if (! $user || $user->ownsTeam($team)) {
+            return [];
+        }
+
+        $filters = [];
+
+        if (! $user->hasPosPermission($team, 'customer.view') && $user->hasPosPermission($team, 'customer.view_own')) {
+            $filters['assigned_user_id'] = $user->id;
+        }
+
+        if ($user->hasPosPermission($team, 'customer_irrespective_of_sell')) {
+            return $filters;
+        }
+
+        $noSellWindows = [
+            'customer_with_no_sell_one_month' => now()->subMonth()->startOfDay(),
+            'customer_with_no_sell_three_month' => now()->subMonths(3)->startOfDay(),
+            'customer_with_no_sell_six_month' => now()->subMonths(6)->startOfDay(),
+            'customer_with_no_sell_one_year' => now()->subYear()->startOfDay(),
+        ];
+
+        foreach ($noSellWindows as $permission => $date) {
+            if ($user->hasPosPermission($team, $permission)) {
+                $filters['no_sell_since'] = $date;
+                break;
+            }
+        }
+
+        return $filters;
+    }
+
+    private function canManageCustomer(?User $user, Team $team, Customer $customer): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->ownsTeam($team) || $user->hasPosPermission($team, 'customer.view')) {
+            return true;
+        }
+
+        if ($user->hasPosPermission($team, 'customer.view_own')) {
+            return $customer->assignedUsers()
+                ->where('users.id', $user->id)
+                ->exists();
+        }
+
+        return false;
     }
 }

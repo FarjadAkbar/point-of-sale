@@ -88,6 +88,18 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasWarrantyPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateWarranty = computed(() => hasWarrantyPermission('warranty.create'));
+const canUpdateWarranty = computed(() => hasWarrantyPermission('warranty.update'));
+const canDeleteWarranty = computed(() => hasWarrantyPermission('warranty.delete'));
+const showActionColumn = computed(
+    () => canUpdateWarranty.value || canDeleteWarranty.value,
+);
 
 const search = ref(props.filters.search ?? '');
 const unitFilter = ref(props.filters.duration_unit || 'all');
@@ -206,6 +218,10 @@ function openCreateModal() {
 }
 
 function openEditModal(row: Row) {
+    if (!canUpdateWarranty.value) {
+        return;
+    }
+
     router.get(
         warrantyRoutes.index.url(teamSlug.value),
         indexQuery({ edit: row.id }),
@@ -257,6 +273,10 @@ function submitEdit() {
 }
 
 function destroyWarranty(row: Row) {
+    if (!canDeleteWarranty.value) {
+        return;
+    }
+
     if (!confirm('Delete this warranty?')) {
         return;
     }
@@ -348,7 +368,7 @@ function sortIndicator(sortKey: string | null): string {
                     Product warranty terms, exports, and sorting.
                 </p>
             </div>
-            <Button type="button" @click="openCreateModal">
+            <Button v-if="canCreateWarranty" type="button" @click="openCreateModal">
                 Add warranty
             </Button>
         </div>
@@ -453,6 +473,7 @@ function sortIndicator(sortKey: string | null): string {
                                 <span v-else>{{ col.label }}</span>
                             </th>
                             <th
+                                v-if="showActionColumn"
                                 class="bg-muted/40 px-3 py-2 text-right font-medium print:hidden"
                             >
                                 Actions
@@ -472,11 +493,15 @@ function sortIndicator(sortKey: string | null): string {
                             >
                                 {{ displayCell(row, col.id) }}
                             </td>
-                            <td class="px-3 py-2 text-right print:hidden">
+                            <td
+                                v-if="showActionColumn"
+                                class="px-3 py-2 text-right print:hidden"
+                            >
                                 <div
                                     class="flex flex-wrap items-center justify-end gap-0.5"
                                 >
                                     <Button
+                                        v-if="canUpdateWarranty"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -488,6 +513,7 @@ function sortIndicator(sortKey: string | null): string {
                                         <Pencil />
                                     </Button>
                                     <Button
+                                        v-if="canDeleteWarranty"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -503,7 +529,7 @@ function sortIndicator(sortKey: string | null): string {
                         </tr>
                         <tr v-if="!(warranties?.data?.length)">
                             <td
-                                :colspan="visibleColumns.length + 1"
+                                :colspan="visibleColumns.length + (showActionColumn ? 1 : 0)"
                                 class="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No warranties match your filters.
@@ -514,6 +540,7 @@ function sortIndicator(sortKey: string | null): string {
         </StandardDataTable>
 
         <StandardFormModal
+            v-if="canCreateWarranty"
             v-model:open="createModalOpen"
             title="Add warranty"
             description="Name, description, and duration."
@@ -545,6 +572,7 @@ function sortIndicator(sortKey: string | null): string {
         </StandardFormModal>
 
         <StandardFormModal
+            v-if="canUpdateWarranty"
             v-model:open="editModalOpen"
             title="Edit warranty"
             :description="editingWarranty?.name"

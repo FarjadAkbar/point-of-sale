@@ -52,6 +52,20 @@ class CustomerService
     {
         return Customer::query()
             ->forTeam($team)
+            ->when(
+                isset($filters['assigned_user_id']) && is_numeric($filters['assigned_user_id']),
+                fn (Builder $query) => $query->whereHas(
+                    'assignedUsers',
+                    fn (Builder $userQuery) => $userQuery->where('users.id', (int) $filters['assigned_user_id'])
+                )
+            )
+            ->when(
+                ! empty($filters['no_sell_since']),
+                fn (Builder $query) => $query->whereDoesntHave(
+                    'sales',
+                    fn (Builder $saleQuery) => $saleQuery->where('transaction_date', '>=', $filters['no_sell_since'])
+                )
+            )
             ->filter($filters);
     }
 

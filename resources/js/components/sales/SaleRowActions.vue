@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     Bell,
     Copy,
@@ -47,6 +47,7 @@ import salesRoutes from '@/routes/sales';
 
 export type SaleRow = {
     id: number;
+    created_by?: number | null;
     invoice_no: string | null;
     transaction_date: string | null;
     status: string;
@@ -111,6 +112,49 @@ const props = defineProps<{
     teamSlug: string;
     customers: CustomerOption[];
 }>();
+
+const page = usePage();
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const authUserId = computed(
+    () =>
+        (page.props.auth as { user?: { id: number } } | undefined)?.user?.id ??
+        null,
+);
+const hasPerm = (p: string): boolean => posPermissions.value.includes(p);
+const isDraft = computed(() => props.row.status === 'draft');
+const isQuotation = computed(() => props.row.status === 'quotation');
+const canUpdateSale = computed(() =>
+    isDraft.value
+        ? hasPerm('draft.update')
+        : isQuotation.value
+          ? hasPerm('quotation.update')
+          : hasPerm('direct_sell.update'),
+);
+const canDeleteSale = computed(() =>
+    isDraft.value
+        ? hasPerm('draft.delete')
+        : isQuotation.value
+          ? hasPerm('quotation.delete')
+          : hasPerm('direct_sell.delete'),
+);
+const canEditShipping = computed(() => hasPerm('direct_sell.update'));
+const canViewPayments = computed(
+    () =>
+        hasPerm('sell.payments') ||
+        hasPerm('edit_sell_payment') ||
+        hasPerm('delete_sell_payment'),
+);
+const canSellReturn = computed(
+    () =>
+        hasPerm('access_sell_return') ||
+        (hasPerm('access_own_sell_return') &&
+            authUserId.value != null &&
+            Number(props.row.created_by ?? 0) === authUserId.value),
+);
+const canEditInvoiceNumber = computed(() => hasPerm('edit_invoice_number'));
 
 const detailCache = new Map<number, SaleDetail>();
 
@@ -470,16 +514,16 @@ const sellReturnHref = computed(() =>
                 <Eye class="mr-2 size-4" />
                 View
             </DropdownMenuItem>
-            <DropdownMenuItem @select.prevent="openEdit">
+            <DropdownMenuItem v-if="canUpdateSale" @select.prevent="openEdit">
                 <Pencil class="mr-2 size-4" />
                 Edit
             </DropdownMenuItem>
-            <DropdownMenuItem @select.prevent="confirmDelete">
+            <DropdownMenuItem v-if="canDeleteSale" @select.prevent="confirmDelete">
                 <Trash2 class="mr-2 size-4" />
                 Delete
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem @select.prevent="openShipping">
+            <DropdownMenuItem v-if="canEditShipping" @select.prevent="openShipping">
                 <Ship class="mr-2 size-4" />
                 Edit shipping
             </DropdownMenuItem>
@@ -497,11 +541,11 @@ const sellReturnHref = computed(() =>
                 Delivery note
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem @select.prevent="openPayments">
+            <DropdownMenuItem v-if="canViewPayments" @select.prevent="openPayments">
                 <CreditCard class="mr-2 size-4" />
                 View payments
             </DropdownMenuItem>
-            <DropdownMenuItem v-if="isFinal" as-child>
+            <DropdownMenuItem v-if="isFinal && canSellReturn" as-child>
                 <Link
                     :href="sellReturnHref"
                     class="flex w-full cursor-default items-center"
@@ -630,6 +674,7 @@ const sellReturnHref = computed(() =>
                         id="edit-inv"
                         v-model="editForm.invoice_no"
                         autocomplete="off"
+                        :disabled="!canEditInvoiceNumber"
                     />
                 </div>
                 <div class="grid gap-2">

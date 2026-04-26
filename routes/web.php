@@ -137,11 +137,11 @@ Route::prefix('{current_team}')
         ]);
 
         Route::get('warranties/export/{format}', [WarrantyController::class, 'exportFile'])
-            ->middleware('pos.permission:warranty.view,warranty.create,warranty.update,warranty.delete')
+            ->middleware('pos.permission:warranty.view,warranty.view_own,warranty.create,warranty.update,warranty.delete')
             ->name('warranties.export');
 
         Route::resource('warranties', WarrantyController::class)
-            ->middleware('pos.permission:warranty.view,warranty.create,warranty.update,warranty.delete')
+            ->middleware('pos.permission:warranty.view,warranty.view_own,warranty.create,warranty.update,warranty.delete')
             ->except([
             'show',
             'create',
@@ -152,7 +152,7 @@ Route::prefix('{current_team}')
             ->name('brands.export');
 
         Route::resource('brands', BrandController::class)
-            ->middleware('pos.permission:brand.view,brand.create,brand.update,brand.delete')
+            ->middleware('pos.permission:brand.view,brand.view_own,brand.create,brand.update,brand.delete')
             ->except([
             'show',
             'create',
@@ -171,20 +171,27 @@ Route::prefix('{current_team}')
         ]);
 
         Route::get('units/export/{format}', [UnitController::class, 'exportFile'])
+            ->middleware('pos.permission:unit.view,unit.view_own')
             ->name('units.export');
 
-        Route::resource('units', UnitController::class)
-            ->middleware('pos.permission:unit.view,unit.create,unit.update,unit.delete')
-            ->except([
-            'show',
-            'create',
-            'edit',
-        ]);
+        Route::get('units', [UnitController::class, 'index'])
+            ->middleware('pos.permission:unit.view,unit.view_own,unit.create,unit.update,unit.delete')
+            ->name('units.index');
+        Route::post('units', [UnitController::class, 'store'])
+            ->middleware('pos.permission:unit.create')
+            ->name('units.store');
+        Route::put('units/{unit}', [UnitController::class, 'update'])
+            ->middleware('pos.permission:unit.update')
+            ->name('units.update');
+        Route::delete('units/{unit}', [UnitController::class, 'destroy'])
+            ->middleware('pos.permission:unit.delete')
+            ->name('units.destroy');
 
         Route::post('brands/quick-store', [BrandController::class, 'quickStore'])
             ->name('brands.quick-store');
 
         Route::post('units/quick-store', [UnitController::class, 'quickStore'])
+            ->middleware('pos.permission:unit.create')
             ->name('units.quick-store');
 
         Route::get('sales-commission-agents/export/{format}', [SalesCommissionAgentController::class, 'exportFile'])
@@ -263,10 +270,14 @@ Route::prefix('{current_team}')
             ->name('pos.list');
         Route::get('pos/recent-transactions', [PosController::class, 'recentTransactions'])->name('pos.recent-transactions');
         Route::post('pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
-        Route::post('cash-register', [CashRegisterController::class, 'store'])->name('cash-register.store');
-        Route::post('cash-register/close', [CashRegisterController::class, 'close'])->name('cash-register.close');
+        Route::post('cash-register', [CashRegisterController::class, 'store'])
+            ->middleware('pos.permission:view_cash_register')
+            ->name('cash-register.store');
+        Route::post('cash-register/close', [CashRegisterController::class, 'close'])
+            ->middleware('pos.permission:close_cash_register')
+            ->name('cash-register.close');
         Route::get('pos', [PosController::class, 'index'])
-            ->middleware('pos.permission:sell.create')
+            ->middleware('pos.permission:sell.create,view_cash_register')
             ->name('pos.index');
 
         Route::resource('booking', BookingController::class)
@@ -277,39 +288,81 @@ Route::prefix('{current_team}')
             'edit',
         ]);
 
-        Route::get('sales/drafts', [SaleController::class, 'draftsIndex'])->name('sales.drafts.index');
-        Route::get('sales/drafts/create', [SaleController::class, 'createDraft'])->name('sales.drafts.create');
-        Route::post('sales/drafts', [SaleController::class, 'storeDraft'])->name('sales.drafts.store');
+        Route::get('sales/drafts', [SaleController::class, 'draftsIndex'])
+            ->middleware('pos.permission:draft.view_all,draft.view_own')
+            ->name('sales.drafts.index');
+        Route::get('sales/drafts/create', [SaleController::class, 'createDraft'])
+            ->middleware('pos.permission:direct_sell.access')
+            ->name('sales.drafts.create');
+        Route::post('sales/drafts', [SaleController::class, 'storeDraft'])
+            ->middleware('pos.permission:direct_sell.access')
+            ->name('sales.drafts.store');
 
-        Route::get('sales/quotations', [SaleController::class, 'quotationsIndex'])->name('sales.quotations.index');
-        Route::get('sales/quotations/create', [SaleController::class, 'createQuotation'])->name('sales.quotations.create');
-        Route::post('sales/quotations', [SaleController::class, 'storeQuotation'])->name('sales.quotations.store');
+        Route::get('sales/quotations', [SaleController::class, 'quotationsIndex'])
+            ->middleware('pos.permission:quotation.view_all,quotation.view_own')
+            ->name('sales.quotations.index');
+        Route::get('sales/quotations/create', [SaleController::class, 'createQuotation'])
+            ->middleware('pos.permission:direct_sell.access')
+            ->name('sales.quotations.create');
+        Route::post('sales/quotations', [SaleController::class, 'storeQuotation'])
+            ->middleware('pos.permission:direct_sell.access')
+            ->name('sales.quotations.store');
 
-        Route::get('sales/returns', [SaleReturnController::class, 'index'])->name('sales.returns.index');
-        Route::get('sales/returns/create', [SaleReturnController::class, 'create'])->name('sales.returns.create');
-        Route::post('sales/returns', [SaleReturnController::class, 'store'])->name('sales.returns.store');
+        Route::get('sales/returns', [SaleReturnController::class, 'index'])
+            ->middleware('pos.permission:access_sell_return,access_own_sell_return')
+            ->name('sales.returns.index');
+        Route::get('sales/returns/create', [SaleReturnController::class, 'create'])
+            ->middleware('pos.permission:access_sell_return,access_own_sell_return')
+            ->name('sales.returns.create');
+        Route::post('sales/returns', [SaleReturnController::class, 'store'])
+            ->middleware('pos.permission:access_sell_return,access_own_sell_return')
+            ->name('sales.returns.store');
 
-        Route::get('sales/shipments', [ShipmentController::class, 'index'])->name('sales.shipments.index');
+        Route::get('sales/shipments', [ShipmentController::class, 'index'])
+            ->middleware('pos.permission:access_shipping,access_own_shipping,access_commission_agent_shipping')
+            ->name('sales.shipments.index');
 
-        Route::get('sales/discounts', [DiscountController::class, 'index'])->name('sales.discounts.index');
-        Route::post('sales/discounts', [DiscountController::class, 'store'])->name('sales.discounts.store');
+        Route::get('sales/discounts', [DiscountController::class, 'index'])
+            ->middleware('pos.permission:discount.access')
+            ->name('sales.discounts.index');
+        Route::post('sales/discounts', [DiscountController::class, 'store'])
+            ->middleware('pos.permission:discount.access')
+            ->name('sales.discounts.store');
 
-        Route::get('sales/{sale}/detail', [SaleController::class, 'detail'])->name('sales.detail');
-        Route::patch('sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
-        Route::patch('sales/{sale}/shipping', [SaleController::class, 'updateShipping'])->name('sales.shipping.update');
-        Route::delete('sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy');
-        Route::get('sales/{sale}/documents/invoice', [SaleController::class, 'printInvoice'])->name('sales.documents.invoice');
-        Route::get('sales/{sale}/documents/packing-slip', [SaleController::class, 'printPackingSlip'])->name('sales.documents.packing-slip');
-        Route::get('sales/{sale}/documents/delivery-note', [SaleController::class, 'printDeliveryNote'])->name('sales.documents.delivery-note');
-        Route::get('sales/{sale}/invoice-link', [SaleController::class, 'invoiceLink'])->name('sales.invoice-link');
+        Route::get('sales/{sale}/detail', [SaleController::class, 'detail'])
+            ->middleware('pos.permission:direct_sell.view,view_own_sell_only,view_commission_agent_sell,draft.view_all,draft.view_own,quotation.view_all,quotation.view_own')
+            ->name('sales.detail');
+        Route::patch('sales/{sale}', [SaleController::class, 'update'])
+            ->middleware('pos.permission:direct_sell.view,view_own_sell_only,view_commission_agent_sell,direct_sell.update,draft.view_all,draft.view_own,draft.update,quotation.view_all,quotation.view_own,quotation.update')
+            ->name('sales.update');
+        Route::patch('sales/{sale}/shipping', [SaleController::class, 'updateShipping'])
+            ->middleware('pos.permission:direct_sell.view,view_own_sell_only,view_commission_agent_sell,direct_sell.update')
+            ->name('sales.shipping.update');
+        Route::delete('sales/{sale}', [SaleController::class, 'destroy'])
+            ->middleware('pos.permission:direct_sell.view,view_own_sell_only,view_commission_agent_sell,direct_sell.delete,draft.view_all,draft.view_own,draft.delete,quotation.view_all,quotation.view_own,quotation.delete')
+            ->name('sales.destroy');
+        Route::get('sales/{sale}/documents/invoice', [SaleController::class, 'printInvoice'])
+            ->middleware('pos.permission:direct_sell.view,view_own_sell_only,view_commission_agent_sell')
+            ->name('sales.documents.invoice');
+        Route::get('sales/{sale}/documents/packing-slip', [SaleController::class, 'printPackingSlip'])
+            ->middleware('pos.permission:direct_sell.view,view_own_sell_only,view_commission_agent_sell')
+            ->name('sales.documents.packing-slip');
+        Route::get('sales/{sale}/documents/delivery-note', [SaleController::class, 'printDeliveryNote'])
+            ->middleware('pos.permission:direct_sell.view,view_own_sell_only,view_commission_agent_sell')
+            ->name('sales.documents.delivery-note');
+        Route::get('sales/{sale}/invoice-link', [SaleController::class, 'invoiceLink'])
+            ->middleware('pos.permission:direct_sell.view,view_own_sell_only,view_commission_agent_sell')
+            ->name('sales.invoice-link');
 
         Route::get('sales', [SaleController::class, 'index'])
-            ->middleware('pos.permission:direct_sell.view,view_own_sell_only')
+            ->middleware('pos.permission:direct_sell.view,view_own_sell_only,view_commission_agent_sell')
             ->name('sales.index');
         Route::get('sales/create', [SaleController::class, 'create'])
             ->middleware('pos.permission:direct_sell.access')
             ->name('sales.create');
-        Route::post('sales', [SaleController::class, 'store'])->name('sales.store');
+        Route::post('sales', [SaleController::class, 'store'])
+            ->middleware('pos.permission:direct_sell.access')
+            ->name('sales.store');
 
         Route::resource('business-locations', BusinessLocationController::class)
             ->middleware('pos.permission:business_settings.access')
@@ -332,7 +385,9 @@ Route::prefix('{current_team}')
                 ->names('settings.modifiers');
         });
 
-        Route::resource('tax-rates', TaxRateController::class)->only(['store', 'update', 'destroy']);
+        Route::resource('tax-rates', TaxRateController::class)
+            ->middleware('pos.permission:tax_rate.create,tax_rate.update,tax_rate.delete')
+            ->only(['store', 'update', 'destroy']);
 
         Route::resource('tax-groups', TaxGroupController::class)->only(['store', 'update', 'destroy']);
 
@@ -428,7 +483,7 @@ Route::prefix('{current_team}')
             ->name('reports.customer-group');
 
         Route::get('reports/stock', [StockReportController::class, 'stockReport'])
-            ->middleware('pos.permission:stock_report.view')
+            ->middleware('pos.permission:stock_report.view,view_product_stock_value')
             ->name('reports.stock');
 
         Route::get('reports/stock-adjustment', [StockAdjustmentReportController::class, 'stockAdjustmentReport'])

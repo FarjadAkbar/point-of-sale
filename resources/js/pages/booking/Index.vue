@@ -38,6 +38,8 @@ const NONE = '__none__';
 
 type Row = {
     id: number;
+    correspondent_user_id: number | null;
+    service_staff_user_id: number | null;
     starts_at: string | null;
     ends_at: string | null;
     status: string;
@@ -109,6 +111,57 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+
+const authUserId = computed<number | null>(() => {
+    const auth = page.props.auth as { user?: { id: number } } | undefined;
+    const id = auth?.user?.id;
+
+    return typeof id === 'number' ? id : null;
+});
+
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+
+const hasBookingAll = computed(() =>
+    posPermissions.value.includes('crud_all_bookings'),
+);
+const hasBookingOwn = computed(() =>
+    posPermissions.value.includes('crud_own_bookings'),
+);
+const canCreateBooking = computed(
+    () => hasBookingAll.value || hasBookingOwn.value,
+);
+const showBookingActions = computed(
+    () => hasBookingAll.value || hasBookingOwn.value,
+);
+
+function canEditBooking(row: Row): boolean {
+    if (hasBookingAll.value) {
+        return true;
+    }
+
+    if (!hasBookingOwn.value) {
+        return false;
+    }
+
+    const uid = authUserId.value;
+
+    if (uid == null) {
+        return false;
+    }
+
+    return (
+        row.correspondent_user_id === uid ||
+        row.service_staff_user_id === uid
+    );
+}
+
+function canDeleteBooking(row: Row): boolean {
+    return canEditBooking(row);
+}
 
 const search = ref(props.filters.search ?? '');
 const perPage = ref(String(props.filters.per_page ?? 15));
@@ -294,6 +347,10 @@ function openCreateModal() {
 }
 
 function openEditModal(row: Row) {
+    if (!canEditBooking(row)) {
+        return;
+    }
+
     router.get(
         bookingRoutes.index.url(teamSlug.value),
         indexQuery({ edit: row.id }),
@@ -382,6 +439,10 @@ function submitEdit() {
 }
 
 function destroyBooking(row: Row) {
+    if (!canDeleteBooking(row)) {
+        return;
+    }
+
     if (!confirm('Delete this booking?')) {
         return;
     }
@@ -462,7 +523,11 @@ function statusLabel(s: string): string {
                     Today’s schedule and all reservations for your team.
                 </p>
             </div>
-            <Button type="button" @click="openCreateModal">
+            <Button
+                v-if="canCreateBooking"
+                type="button"
+                @click="openCreateModal"
+            >
                 Add new booking
             </Button>
         </div>
@@ -488,6 +553,7 @@ function statusLabel(s: string): string {
                                 {{ col.label }}
                             </th>
                             <th
+                                v-if="showBookingActions"
                                 class="bg-muted/40 px-3 py-2 text-right font-medium print:hidden"
                             >
                                 Actions
@@ -511,8 +577,12 @@ function statusLabel(s: string): string {
                                         : displayCell(row, col.id)
                                 }}
                             </td>
-                            <td class="px-3 py-2 text-right print:hidden">
+                            <td
+                                v-if="showBookingActions"
+                                class="px-3 py-2 text-right print:hidden"
+                            >
                                 <Button
+                                    v-if="canEditBooking(row)"
                                     type="button"
                                     variant="ghost"
                                     size="icon-sm"
@@ -527,7 +597,10 @@ function statusLabel(s: string): string {
                         </tr>
                         <tr v-if="!(todaysBookings?.data?.length)">
                             <td
-                                :colspan="visibleColumns.length + 1"
+                                :colspan="
+                                    visibleColumns.length +
+                                    (showBookingActions ? 1 : 0)
+                                "
                                 class="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No bookings for today.
@@ -624,6 +697,7 @@ function statusLabel(s: string): string {
                             <span v-else>{{ col.label }}</span>
                         </th>
                         <th
+                            v-if="showBookingActions"
                             class="bg-muted/40 px-3 py-2 text-right font-medium print:hidden"
                         >
                             Actions
@@ -647,11 +721,15 @@ function statusLabel(s: string): string {
                                     : displayCell(row, col.id)
                             }}
                         </td>
-                        <td class="px-3 py-2 text-right print:hidden">
+                        <td
+                            v-if="showBookingActions"
+                            class="px-3 py-2 text-right print:hidden"
+                        >
                             <div
                                 class="flex flex-wrap items-center justify-end gap-0.5"
                             >
                                 <Button
+                                    v-if="canEditBooking(row)"
                                     type="button"
                                     variant="ghost"
                                     size="icon-sm"
@@ -663,6 +741,7 @@ function statusLabel(s: string): string {
                                     <Pencil />
                                 </Button>
                                 <Button
+                                    v-if="canDeleteBooking(row)"
                                     type="button"
                                     variant="ghost"
                                     size="icon-sm"
@@ -678,7 +757,10 @@ function statusLabel(s: string): string {
                     </tr>
                     <tr v-if="!(bookings?.data?.length)">
                         <td
-                            :colspan="visibleColumns.length + 1"
+                            :colspan="
+                                visibleColumns.length +
+                                (showBookingActions ? 1 : 0)
+                            "
                             class="px-3 py-8 text-center text-muted-foreground"
                         >
                             No bookings match your filters.
@@ -689,6 +771,7 @@ function statusLabel(s: string): string {
         </StandardDataTable>
 
         <StandardFormModal
+            v-if="canCreateBooking"
             v-model:open="createModalOpen"
             title="Add new booking"
             description="Location, customer, optional table and staff, and time window."
@@ -726,6 +809,7 @@ function statusLabel(s: string): string {
         </StandardFormModal>
 
         <StandardFormModal
+            v-if="showBookingActions"
             v-model:open="editModalOpen"
             title="Edit booking"
             :description="editingBooking ? `#${editingBooking.id}` : ''"

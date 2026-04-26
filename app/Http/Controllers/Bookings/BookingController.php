@@ -12,6 +12,7 @@ use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\RestaurantTable;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\BookingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,10 +29,11 @@ class BookingController extends Controller
     public function index(BookingIndexRequest $request, Team $current_team): Response
     {
         $filters = $request->filters();
-        $paginator = $this->bookingService->paginate($current_team, $filters);
+        $restrictUserId = $this->bookingRestrictToUserId($request->user(), $current_team);
+        $paginator = $this->bookingService->paginate($current_team, $filters, $restrictUserId);
         $paginator->through(fn (Booking $b) => (new BookingResource($b))->resolve());
 
-        $todayRows = $this->bookingService->todaysForTeam($current_team);
+        $todayRows = $this->bookingService->todaysForTeam($current_team, $restrictUserId);
         $todayResolved = $todayRows->map(fn (Booking $b) => (new BookingResource($b))->resolve())->values()->all();
         $todayTotal = count($todayResolved);
         $todaysPaginator = new LengthAwarePaginator(
@@ -44,7 +46,10 @@ class BookingController extends Controller
 
         $editing = null;
         if ($editId = $request->query('edit')) {
-            $editing = $current_team->bookings()->whereKey($editId)->first();
+            $candidate = $current_team->bookings()->whereKey($editId)->first();
+            if ($candidate && $this->canManageBooking($request->user(), $current_team, $candidate)) {
+                $editing = $candidate;
+            }
             $editing?->load([
                 'customer:id,entity_type,business_name,first_name,middle_name,last_name,customer_code,mobile',
                 'businessLocation:id,name',
@@ -111,6 +116,12 @@ class BookingController extends Controller
         $data = $request->validated();
         $data['status'] = BookingStatus::Booked;
 
+        if ($this->bookingRestrictToUserId($request->user(), $current_team) !== null) {
+            if (empty($data['correspondent_user_id'])) {
+                $data['correspondent_user_id'] = $request->user()?->id;
+            }
+        }
+
         $this->bookingService->create($current_team, $data);
 
         return to_route('booking.index', ['current_team' => $current_team])
@@ -119,6 +130,8 @@ class BookingController extends Controller
 
     public function update(UpdateBookingRequest $request, Team $current_team, Booking $booking): RedirectResponse
     {
+        abort_unless($this->canManageBooking($request->user(), $current_team, $booking), 403);
+
         $this->bookingService->update($booking, $request->validated());
 
         return to_route('booking.index', ['current_team' => $current_team])
@@ -127,9 +140,57 @@ class BookingController extends Controller
 
     public function destroy(Request $request, Team $current_team, Booking $booking): RedirectResponse
     {
+        abort_unless($this->canManageBooking($request->user(), $current_team, $booking), 403);
+
         $this->bookingService->delete($booking);
 
         return to_route('booking.index', ['current_team' => $current_team])
             ->with('success', 'Booking deleted.');
+    }
+
+    /**
+     * When the user only has "own" booking access, limit lists to rows they correspond on or are assigned as service staff.
+     */
+    private function bookingRestrictToUserId(?User $user, Team $team): ?int
+    {
+        if (! $user) {
+            return null;
+        }
+
+        if ($user->ownsTeam($team)) {
+            return null;
+        }
+
+        if ($user->hasPosPermission($team, 'crud_all_bookings')) {
+            return null;
+        }
+
+        if ($user->hasPosPermission($team, 'crud_own_bookings')) {
+            return $user->id;
+        }
+
+        return null;
+    }
+
+    private function canManageBooking(?User $user, Team $team, Booking $booking): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->ownsTeam($team)) {
+            return true;
+        }
+
+        if ($user->hasPosPermission($team, 'crud_all_bookings')) {
+            return true;
+        }
+
+        if ($user->hasPosPermission($team, 'crud_own_bookings')) {
+            return (int) $booking->correspondent_user_id === (int) $user->id
+                || (int) $booking->service_staff_user_id === (int) $user->id;
+        }
+
+        return false;
     }
 }

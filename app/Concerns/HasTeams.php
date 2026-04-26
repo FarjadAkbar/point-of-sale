@@ -206,8 +206,9 @@ trait HasTeams
 
         $checkboxes = $posRole->permissions ?? [];
         $radios = array_values(array_filter($posRole->radio_options ?? []));
+        $granted = array_values(array_unique(array_merge($checkboxes, $radios)));
 
-        return array_values(array_unique(array_merge($checkboxes, $radios)));
+        return $this->withImpliedPosPermissions($granted);
     }
 
     public function hasPosPermission(Team $team, string $permission): bool
@@ -248,5 +249,51 @@ trait HasTeams
             ->where('team_id', $team->id)
             ->with('posRole')
             ->first();
+    }
+
+    /**
+     * @param  array<int, string>  $permissions
+     * @return array<int, string>
+     */
+    protected function withImpliedPosPermissions(array $permissions): array
+    {
+        $mapped = $permissions;
+        $impliedListPermissions = [
+            'brand.create' => 'brand.view',
+            'brand.update' => 'brand.view',
+            'brand.delete' => 'brand.view',
+            'unit.create' => 'unit.view',
+            'unit.update' => 'unit.view',
+            'unit.delete' => 'unit.view',
+            'warranty.create' => 'warranty.view',
+            'warranty.update' => 'warranty.view',
+            'warranty.delete' => 'warranty.view',
+            'stock_adjustment.create' => 'stock_adjustment.view',
+            'stock_adjustment.update' => 'stock_adjustment.view',
+            'stock_adjustment.delete' => 'stock_adjustment.view',
+            'stock_transfer.create' => 'stock_transfer.view',
+            'stock_transfer.update' => 'stock_transfer.view',
+            'stock_transfer.delete' => 'stock_transfer.view',
+            'direct_sell.update' => 'direct_sell.view',
+            'direct_sell.delete' => 'direct_sell.view',
+            'draft.update' => 'draft.view_all',
+            'draft.delete' => 'draft.view_all',
+            'quotation.update' => 'quotation.view_all',
+            'quotation.delete' => 'quotation.view_all',
+            'tax_rate.create' => 'tax_rate.view',
+            'tax_rate.update' => 'tax_rate.view',
+            'tax_rate.delete' => 'tax_rate.view',
+            'expense.add' => 'view_own_expense',
+            'expense.edit' => 'view_own_expense',
+            'expense.delete' => 'view_own_expense',
+        ];
+
+        foreach ($permissions as $permission) {
+            if (isset($impliedListPermissions[$permission])) {
+                $mapped[] = $impliedListPermissions[$permission];
+            }
+        }
+
+        return array_values(array_unique($mapped));
     }
 }

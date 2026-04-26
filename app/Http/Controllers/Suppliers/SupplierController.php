@@ -10,6 +10,7 @@ use App\Http\Requests\Suppliers\UpdateSupplierRequest;
 use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\SupplierService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +29,10 @@ class SupplierController extends Controller
 
     public function index(SupplierIndexRequest $request, Team $current_team): Response
     {
-        $filters = $request->filters();
+        $filters = array_merge(
+            $request->filters(),
+            $this->supplierPermissionFilters($request->user(), $current_team),
+        );
         $paginator = $this->supplierService->paginate($current_team, $filters);
         $paginator->through(fn (Supplier $supplier) => (new SupplierResource($supplier))->resolve());
 
@@ -38,7 +42,10 @@ class SupplierController extends Controller
 
         $editing = null;
         if ($editId = $request->query('edit')) {
-            $editing = $current_team->suppliers()->whereKey($editId)->first();
+            $candidate = $current_team->suppliers()->whereKey($editId)->first();
+            if ($candidate && $this->canManageSupplier($request->user(), $current_team, $candidate)) {
+                $editing = $candidate;
+            }
             $editing?->load(['assignedUsers', 'contactPersons']);
         }
 
@@ -62,7 +69,18 @@ class SupplierController extends Controller
 
     public function store(StoreSupplierRequest $request, Team $current_team): RedirectResponse
     {
-        $supplier = $this->supplierService->create($current_team, $request->validated());
+        $data = $request->validated();
+        if (
+            ! $request->user()?->hasPosPermission($current_team, 'supplier.view')
+            && $request->user()?->hasPosPermission($current_team, 'supplier.view_own')
+        ) {
+            $data['assigned_to_users'] = array_values(array_unique(array_merge(
+                (array) ($data['assigned_to_users'] ?? []),
+                [$request->user()?->id],
+            )));
+        }
+
+        $supplier = $this->supplierService->create($current_team, $data);
 
         return to_route('suppliers.index', ['current_team' => $current_team])
             ->with('success', 'Supplier created.');
@@ -70,7 +88,18 @@ class SupplierController extends Controller
 
     public function quickStore(StoreSupplierRequest $request, Team $current_team): JsonResponse
     {
-        $supplier = $this->supplierService->create($current_team, $request->validated());
+        $data = $request->validated();
+        if (
+            ! $request->user()?->hasPosPermission($current_team, 'supplier.view')
+            && $request->user()?->hasPosPermission($current_team, 'supplier.view_own')
+        ) {
+            $data['assigned_to_users'] = array_values(array_unique(array_merge(
+                (array) ($data['assigned_to_users'] ?? []),
+                [$request->user()?->id],
+            )));
+        }
+
+        $supplier = $this->supplierService->create($current_team, $data);
 
         return response()->json([
             'supplier' => [
@@ -88,6 +117,7 @@ class SupplierController extends Controller
 
     public function update(UpdateSupplierRequest $request, Team $current_team, Supplier $supplier): RedirectResponse
     {
+        abort_unless($this->canManageSupplier($request->user(), $current_team, $supplier), 403);
         $this->supplierService->update($supplier, $request->validated());
 
         return to_route('suppliers.index', ['current_team' => $current_team])
@@ -96,6 +126,7 @@ class SupplierController extends Controller
 
     public function destroy(Request $request, Team $current_team, Supplier $supplier): RedirectResponse
     {
+        abort_unless($this->canManageSupplier($request->user(), $current_team, $supplier), 403);
         $this->supplierService->delete($supplier);
 
         return to_route('suppliers.index', ['current_team' => $current_team])
@@ -107,7 +138,10 @@ class SupplierController extends Controller
         $format = strtolower($format);
         abort_unless(in_array($format, ['csv', 'xlsx', 'pdf'], true), 404);
 
-        $filters = $request->filters();
+        $filters = array_merge(
+            $request->filters(),
+            $this->supplierPermissionFilters($request->user(), $current_team),
+        );
         $export = new SuppliersExport($current_team, $filters, $this->supplierService);
 
         $filename = 'suppliers-'.now()->format('Y-m-d-His');
@@ -131,5 +165,40 @@ class SupplierController extends Controller
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download($filename.'.pdf');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function supplierPermissionFilters(?User $user, Team $team): array
+    {
+        if (! $user || $user->ownsTeam($team) || $user->hasPosPermission($team, 'supplier.view')) {
+            return [];
+        }
+
+        if ($user->hasPosPermission($team, 'supplier.view_own')) {
+            return ['assigned_user_id' => $user->id];
+        }
+
+        return [];
+    }
+
+    private function canManageSupplier(?User $user, Team $team, Supplier $supplier): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->ownsTeam($team) || $user->hasPosPermission($team, 'supplier.view')) {
+            return true;
+        }
+
+        if ($user->hasPosPermission($team, 'supplier.view_own')) {
+            return $supplier->assignedUsers()
+                ->where('users.id', $user->id)
+                ->exists();
+        }
+
+        return false;
     }
 }

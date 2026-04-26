@@ -18,6 +18,7 @@ class SaleResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'created_by' => $this->created_by,
             'invoice_no' => $this->invoice_no,
             'transaction_date' => $this->transaction_date?->toISOString(),
             'status' => $this->status,

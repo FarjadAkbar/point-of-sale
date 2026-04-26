@@ -53,6 +53,15 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasStockTransferPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateStockTransfer = computed(() =>
+    hasStockTransferPermission('stock_transfer.create'),
+);
 
 const search = ref(props.filters.search ?? '');
 const perPage = ref(String(props.filters.per_page ?? 15));
@@ -174,7 +183,7 @@ function sortIndicator(sortKey: string | null): string {
                     Transfers between business locations.
                 </p>
             </div>
-            <Button as-child>
+            <Button v-if="canCreateStockTransfer" as-child>
                 <Link :href="stockTransferRoutes.create.url(teamSlug)">
                     Add stock transfer
                 </Link>

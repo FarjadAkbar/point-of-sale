@@ -55,6 +55,10 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(
+    () => (page.props.posPermissions as string[] | undefined) ?? [],
+);
+const canAddExpense = computed(() => posPermissions.value.includes('expense.add'));
 
 const search = ref(props.filters.search ?? '');
 const perPage = ref(String(props.filters.per_page ?? 15));
@@ -188,7 +192,7 @@ function sortIndicator(sortKey: string | null): string {
                         Expense categories
                     </Link>
                 </Button>
-                <Button as-child>
+                <Button v-if="canAddExpense" as-child>
                     <Link :href="expenseRoutes.create.url(teamSlug)">
                         Add expense
                     </Link>

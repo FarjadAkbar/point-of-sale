@@ -32,7 +32,13 @@ class WarrantyService
      */
     public function filteredQuery(Team $team, array $filters): Builder
     {
-        return Warranty::query()->forTeam($team)->filter($filters);
+        return Warranty::query()
+            ->forTeam($team)
+            ->when(
+                ! empty($filters['created_by']),
+                fn (Builder $query) => $query->where('created_by', (int) $filters['created_by'])
+            )
+            ->filter($filters);
     }
 
     /**
@@ -46,9 +52,10 @@ class WarrantyService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(Team $team, array $data): Warranty
+    public function create(Team $team, array $data, ?int $createdBy = null): Warranty
     {
         $data['team_id'] = $team->id;
+        $data['created_by'] = $createdBy;
 
         return Warranty::query()->create($data);
     }

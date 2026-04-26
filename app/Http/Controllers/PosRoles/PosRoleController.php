@@ -33,7 +33,7 @@ class PosRoleController extends Controller
         $this->authorizeTeamAdmin($request->user(), $current_team);
 
         return Inertia::render('pos-roles/Create', [
-            'permissionGroups' => PosPermissionCatalog::groups(),
+            'permissionGroups' => $this->permissionGroupsFromDatabase($current_team),
             'defaults' => [
                 'permissions' => [],
                 'radio_options' => PosPermissionCatalog::defaultRadioSelections(),
@@ -64,7 +64,7 @@ class PosRoleController extends Controller
 
         return Inertia::render('pos-roles/Edit', [
             'posRole' => $pos_role,
-            'permissionGroups' => PosPermissionCatalog::groups(),
+            'permissionGroups' => $this->permissionGroupsFromDatabase($current_team),
             'defaults' => [
                 'permissions' => $pos_role->permissions ?? [],
                 'radio_options' => array_merge(
@@ -113,5 +113,48 @@ class PosRoleController extends Controller
     {
         $role = $user?->teamRole($team);
         abort_unless($role && $role->isAtLeast(TeamRole::Admin), 403);
+    }
+
+    /**
+     * Build permission groups from DB-assigned role permissions for this team,
+     * while preserving known catalog labels/grouping.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function permissionGroupsFromDatabase(Team $team): array
+    {
+        $catalogGroups = PosPermissionCatalog::groups();
+        $knownPermissions = collect($catalogGroups)
+            ->flatMap(fn (array $group) => collect($group['checkboxes'] ?? [])->pluck('value'))
+            ->filter(fn ($value) => is_string($value) && $value !== '')
+            ->values()
+            ->all();
+
+        $dbPermissions = $team->posRoles()
+            ->get(['permissions'])
+            ->flatMap(fn (PosRole $role) => is_array($role->permissions) ? $role->permissions : [])
+            ->filter(fn ($value) => is_string($value) && $value !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $missingFromCatalog = array_values(array_diff($dbPermissions, $knownPermissions));
+
+        if ($missingFromCatalog === []) {
+            return $catalogGroups;
+        }
+
+        $catalogGroups[] = [
+            'id' => 'database_permissions',
+            'title' => 'Database permissions',
+            'help' => 'Permissions discovered from existing role records.',
+            'select_all' => true,
+            'checkboxes' => array_map(
+                fn (string $permission) => ['value' => $permission, 'label' => $permission],
+                $missingFromCatalog,
+            ),
+        ];
+
+        return $catalogGroups;
     }
 }

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['team_id', 'name', 'description', 'duration_value', 'duration_unit'])]
+#[Fillable(['team_id', 'created_by', 'name', 'description', 'duration_value', 'duration_unit'])]
 class Warranty extends Model
 {
     /** @use HasFactory<WarrantyFactory> */
@@ -34,6 +34,14 @@ class Warranty extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**

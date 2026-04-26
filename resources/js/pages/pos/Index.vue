@@ -120,6 +120,18 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasPosPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canViewCashRegister = computed(() =>
+    hasPosPermission('view_cash_register'),
+);
+const canCloseCashRegister = computed(() =>
+    hasPosPermission('close_cash_register'),
+);
 
 const canUsePos = computed(() => !!props.cashRegisterSession);
 
@@ -1428,6 +1440,7 @@ function tryAddProduct(p: ProductHit) {
                     class="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:shrink-0"
                 >
                     <Button
+                        v-if="canViewCashRegister"
                         type="button"
                         variant="outline"
                         size="sm"
@@ -1438,6 +1451,7 @@ function tryAddProduct(p: ProductHit) {
                         Register
                     </Button>
                     <Button
+                        v-if="canCloseCashRegister"
                         type="button"
                         variant="outline"
                         size="sm"
@@ -2649,6 +2663,7 @@ function tryAddProduct(p: ProductHit) {
         </Dialog>
 
         <Dialog
+            v-if="canViewCashRegister"
             :open="registerDetailsOpen"
             @update:open="(v) => (registerDetailsOpen = v)"
         >

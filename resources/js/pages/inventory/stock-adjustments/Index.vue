@@ -53,6 +53,15 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasStockAdjustmentPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateStockAdjustment = computed(() =>
+    hasStockAdjustmentPermission('stock_adjustment.create'),
+);
 
 const search = ref(props.filters.search ?? '');
 const perPage = ref(String(props.filters.per_page ?? 15));
@@ -174,7 +183,7 @@ function sortIndicator(sortKey: string | null): string {
                     Inventory corrections by location.
                 </p>
             </div>
-            <Button as-child>
+            <Button v-if="canCreateStockAdjustment" as-child>
                 <Link :href="stockAdjustmentRoutes.create.url(teamSlug)">
                     Add stock adjustment
                 </Link>

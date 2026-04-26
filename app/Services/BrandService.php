@@ -32,7 +32,13 @@ class BrandService
      */
     public function filteredQuery(Team $team, array $filters): Builder
     {
-        return Brand::query()->forTeam($team)->filter($filters);
+        return Brand::query()
+            ->forTeam($team)
+            ->when(
+                ! empty($filters['created_by']),
+                fn (Builder $query) => $query->where('created_by', (int) $filters['created_by'])
+            )
+            ->filter($filters);
     }
 
     /**
@@ -46,9 +52,10 @@ class BrandService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(Team $team, array $data): Brand
+    public function create(Team $team, array $data, ?int $createdBy = null): Brand
     {
         $data['team_id'] = $team->id;
+        $data['created_by'] = $createdBy;
 
         return Brand::query()->create($data);
     }

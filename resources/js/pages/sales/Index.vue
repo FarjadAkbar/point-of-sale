@@ -19,6 +19,7 @@ import type { Team } from '@/types';
 
 type Row = {
     id: number;
+    created_by: number | null;
     invoice_no: string | null;
     transaction_date: string | null;
     status: string;
@@ -64,6 +65,16 @@ defineOptions({
 const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
+);
+
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasSellPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canDirectSellAccess = computed(() =>
+    hasSellPermission('direct_sell.access'),
 );
 
 const search = ref(props.filters.search ?? '');
@@ -201,7 +212,7 @@ function sortIndicator(sortKey: string | null): string {
                     Customer sales by location.
                 </p>
             </div>
-            <Button as-child>
+            <Button v-if="canDirectSellAccess" as-child>
                 <Link :href="salesRoutes.create.url(teamSlug)">
                     <Plus class="mr-1 size-4" />
                     Add sale
@@ -295,6 +306,7 @@ function sortIndicator(sortKey: string | null): string {
                         >
                             No sales yet.
                             <Button
+                                v-if="canDirectSellAccess"
                                 as-child
                                 variant="link"
                                 class="ml-1 h-auto p-0"

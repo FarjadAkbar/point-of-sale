@@ -10,6 +10,7 @@ use App\Http\Requests\Brands\UpdateBrandRequest;
 use App\Http\Resources\BrandResource;
 use App\Models\Brand;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\BrandService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -28,12 +29,29 @@ class BrandController extends Controller
 
     public function index(BrandIndexRequest $request, Team $current_team): Response
     {
+        $this->authorizeBrandPermission($request->user(), $current_team, [
+            'brand.view',
+            'brand.view_own',
+            'brand.create',
+            'brand.update',
+            'brand.delete',
+        ]);
+
         $filters = $request->filters();
+        if (
+            ! $request->user()?->hasPosPermission($current_team, 'brand.view')
+            && $request->user()?->hasPosPermission($current_team, 'brand.view_own')
+        ) {
+            $filters['created_by'] = $request->user()?->id;
+        }
         $paginator = $this->brandService->paginate($current_team, $filters);
         $paginator->through(fn (Brand $b) => (new BrandResource($b))->resolve());
 
         $editing = null;
-        if ($editId = $request->query('edit')) {
+        if (
+            $request->user()?->hasPosPermission($current_team, 'brand.update')
+            && ($editId = $request->query('edit'))
+        ) {
             $editing = $current_team->brands()->whereKey($editId)->first();
         }
 
@@ -51,7 +69,8 @@ class BrandController extends Controller
 
     public function store(StoreBrandRequest $request, Team $current_team): RedirectResponse
     {
-        $this->brandService->create($current_team, $request->validated());
+        $this->authorizeBrandPermission($request->user(), $current_team, ['brand.create']);
+        $this->brandService->create($current_team, $request->validated(), $request->user()?->id);
 
         return to_route('brands.index', ['current_team' => $current_team])
             ->with('success', 'Brand created.');
@@ -59,13 +78,15 @@ class BrandController extends Controller
 
     public function quickStore(StoreBrandRequest $request, Team $current_team): JsonResponse
     {
-        $brand = $this->brandService->create($current_team, $request->validated());
+        $this->authorizeBrandPermission($request->user(), $current_team, ['brand.create']);
+        $brand = $this->brandService->create($current_team, $request->validated(), $request->user()?->id);
 
         return response()->json((new BrandResource($brand))->resolve(), 201);
     }
 
     public function update(UpdateBrandRequest $request, Team $current_team, Brand $brand): RedirectResponse
     {
+        $this->authorizeBrandPermission($request->user(), $current_team, ['brand.update']);
         $this->brandService->update($brand, $request->validated());
 
         return to_route('brands.index', ['current_team' => $current_team])
@@ -74,6 +95,7 @@ class BrandController extends Controller
 
     public function destroy(Request $request, Team $current_team, Brand $brand): RedirectResponse
     {
+        $this->authorizeBrandPermission($request->user(), $current_team, ['brand.delete']);
         $this->brandService->delete($brand);
 
         return to_route('brands.index', ['current_team' => $current_team])
@@ -82,6 +104,7 @@ class BrandController extends Controller
 
     public function exportFile(BrandIndexRequest $request, Team $current_team, string $format): BinaryFileResponse|\Illuminate\Http\Response
     {
+        $this->authorizeBrandPermission($request->user(), $current_team, ['brand.view', 'brand.view_own']);
         $format = strtolower($format);
         abort_unless(in_array($format, ['csv', 'xlsx', 'pdf'], true), 404);
 
@@ -109,5 +132,13 @@ class BrandController extends Controller
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download($filename.'.pdf');
+    }
+
+    /**
+     * @param  array<int, string>  $permissions
+     */
+    private function authorizeBrandPermission(?User $user, Team $team, array $permissions): void
+    {
+        abort_unless($user?->hasAnyPosPermission($team, $permissions) ?? false, 403);
     }
 }

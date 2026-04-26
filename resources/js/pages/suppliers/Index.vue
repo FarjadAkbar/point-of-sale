@@ -95,6 +95,24 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasSupplierPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateSupplier = computed(() =>
+    hasSupplierPermission('supplier.create'),
+);
+const canUpdateSupplier = computed(() =>
+    hasSupplierPermission('supplier.update'),
+);
+const canDeleteSupplier = computed(() =>
+    hasSupplierPermission('supplier.delete'),
+);
+const showActionColumn = computed(
+    () => canUpdateSupplier.value || canDeleteSupplier.value,
+);
 
 const search = ref(props.filters.search ?? '');
 const contactTypeFilter = ref(props.filters.contact_type || 'all');
@@ -224,6 +242,10 @@ function openCreateModal() {
 }
 
 function openEditModal(row: SupplierRow) {
+    if (!canUpdateSupplier.value) {
+        return;
+    }
+
     router.get(
         supplierRoutes.index.url(teamSlug.value),
         indexQuery({ edit: row.id }),
@@ -266,6 +288,10 @@ function submitEdit() {
 }
 
 function destroySupplier(row: SupplierRow) {
+    if (!canDeleteSupplier.value) {
+        return;
+    }
+
     if (!confirm('Delete this supplier? This cannot be undone.')) {
         return;
     }
@@ -354,7 +380,7 @@ function sortIndicator(sortKey: string): string {
                     Filters, column visibility, exports, print, paging, and sort.
                 </p>
             </div>
-            <Button type="button" @click="openCreateModal">
+            <Button v-if="canCreateSupplier" type="button" @click="openCreateModal">
                 Add supplier
             </Button>
         </div>
@@ -456,6 +482,7 @@ function sortIndicator(sortKey: string): string {
                                 </button>
                             </th>
                             <th
+                                v-if="showActionColumn"
                                 class="bg-muted/40 px-3 py-2 text-right font-medium print:hidden"
                             >
                                 Actions
@@ -475,11 +502,15 @@ function sortIndicator(sortKey: string): string {
                             >
                                 {{ displayCell(row, col.id) }}
                             </td>
-                            <td class="px-3 py-2 text-right print:hidden">
+                            <td
+                                v-if="showActionColumn"
+                                class="px-3 py-2 text-right print:hidden"
+                            >
                                 <div
                                     class="flex flex-wrap items-center justify-end gap-0.5"
                                 >
                                     <Button
+                                        v-if="canUpdateSupplier"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -491,6 +522,7 @@ function sortIndicator(sortKey: string): string {
                                         <Pencil />
                                     </Button>
                                     <Button
+                                        v-if="canDeleteSupplier"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -506,7 +538,7 @@ function sortIndicator(sortKey: string): string {
                         </tr>
                         <tr v-if="!(suppliers?.data?.length)">
                             <td
-                                :colspan="visibleColumns.length + 1"
+                                :colspan="visibleColumns.length + (showActionColumn ? 1 : 0)"
                                 class="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No suppliers match your filters.
@@ -517,6 +549,7 @@ function sortIndicator(sortKey: string): string {
         </StandardDataTable>
 
         <StandardFormModal
+            v-if="canCreateSupplier"
             v-model:open="createModalOpen"
             title="Add supplier"
             description="Fields mirror your reference contact form (supplier module)."
@@ -554,6 +587,7 @@ function sortIndicator(sortKey: string): string {
         </StandardFormModal>
 
         <StandardFormModal
+            v-if="canUpdateSupplier"
             v-model:open="editModalOpen"
             title="Edit supplier"
             :description="

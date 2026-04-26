@@ -48,6 +48,18 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasUserPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateUser = computed(() => hasUserPermission('user.create'));
+const canUpdateUser = computed(() => hasUserPermission('user.update'));
+const canDeleteUser = computed(() => hasUserPermission('user.delete'));
+const showActionColumn = computed(
+    () => canUpdateUser.value || canDeleteUser.value,
+);
 const search = ref('');
 const perPage = ref(String(props.memberships?.per_page ?? 15));
 
@@ -58,6 +70,10 @@ function goToPage(url: string | null) {
 }
 
 function remove(row: Row) {
+    if (!canDeleteUser.value) {
+        return;
+    }
+
     if (row.team_role === 'owner') {
         return;
     }
@@ -88,7 +104,7 @@ function remove(row: Row) {
                     Team members, login, and POS roles.
                 </p>
             </div>
-            <Button as-child>
+            <Button v-if="canCreateUser" as-child>
                 <Link :href="teamUserRoutes.create.url(teamSlug)">
                     Add user
                 </Link>
@@ -111,7 +127,10 @@ function remove(row: Row) {
                         <th class="px-3 py-2 text-left font-medium">Active</th>
                         <th class="px-3 py-2 text-left font-medium">POS role</th>
                         <th class="px-3 py-2 text-left font-medium">Team role</th>
-                        <th class="px-3 py-2 text-right font-medium">
+                        <th
+                            v-if="showActionColumn"
+                            class="px-3 py-2 text-right font-medium"
+                        >
                             Actions
                         </th>
                     </tr>
@@ -135,9 +154,13 @@ function remove(row: Row) {
                         <td class="px-3 py-2 capitalize">
                             {{ row.team_role }}
                         </td>
-                        <td class="px-3 py-2 text-right">
+                        <td
+                            v-if="showActionColumn"
+                            class="px-3 py-2 text-right"
+                        >
                             <div class="flex justify-end gap-1">
                                 <Button
+                                    v-if="canUpdateUser"
                                     variant="ghost"
                                     size="icon"
                                     class="size-8"
@@ -155,7 +178,7 @@ function remove(row: Row) {
                                     </Link>
                                 </Button>
                                 <Button
-                                    v-if="row.team_role !== 'owner'"
+                                    v-if="canDeleteUser && row.team_role !== 'owner'"
                                     variant="ghost"
                                     size="icon"
                                     class="text-destructive size-8"

@@ -75,6 +75,18 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasProductPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateProduct = computed(() => hasProductPermission('product.create'));
+const canUpdateProduct = computed(() => hasProductPermission('product.update'));
+const canDeleteProduct = computed(() => hasProductPermission('product.delete'));
+const showActionColumn = computed(
+    () => canUpdateProduct.value || canDeleteProduct.value,
+);
 
 const search = ref(props.filters.search ?? '');
 const typeFilter = ref(props.filters.product_type || 'all');
@@ -160,14 +172,24 @@ function goToPage(url: string | null) {
 }
 
 function importCsv() {
+    if (!canCreateProduct.value && !canUpdateProduct.value) {
+        return;
+    }
     router.post(productRoutes.import.csv.url(teamSlug.value));
 }
 
 function importXlsx() {
+    if (!canCreateProduct.value && !canUpdateProduct.value) {
+        return;
+    }
     router.post(productRoutes.import.xlsx.url(teamSlug.value));
 }
 
 function destroyProduct(row: Row) {
+    if (!canDeleteProduct.value) {
+        return;
+    }
+
     if (
         !confirm(
             `Delete “${row.name}”? This cannot be undone if the product is not referenced elsewhere.`,
@@ -246,7 +268,12 @@ function sortIndicator(sortKey: string | null): string {
             <div class="flex flex-wrap gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger as-child>
-                        <Button type="button" variant="outline" size="sm">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            :disabled="!canCreateProduct && !canUpdateProduct"
+                        >
                             Import
                         </Button>
                     </DropdownMenuTrigger>
@@ -261,7 +288,7 @@ function sortIndicator(sortKey: string | null): string {
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <Button as-child>
+                <Button v-if="canCreateProduct" as-child>
                     <Link :href="productRoutes.create.url(teamSlug)">
                         Add product
                     </Link>
@@ -341,6 +368,7 @@ function sortIndicator(sortKey: string | null): string {
                                 <span v-else>{{ col.label }}</span>
                             </th>
                             <th
+                                v-if="showActionColumn"
                                 class="bg-muted/40 px-3 py-2 text-right font-medium"
                             >
                                 Actions
@@ -373,11 +401,15 @@ function sortIndicator(sortKey: string | null): string {
                                     {{ displayCell(row, col.id) }}
                                 </template>
                             </td>
-                            <td class="px-3 py-2 text-right">
+                            <td
+                                v-if="showActionColumn"
+                                class="px-3 py-2 text-right"
+                            >
                                 <div
                                     class="flex flex-wrap items-center justify-end gap-0.5"
                                 >
                                     <Button
+                                        v-if="canUpdateProduct"
                                         variant="ghost"
                                         size="icon-sm"
                                         class="text-primary hover:text-primary"
@@ -397,6 +429,7 @@ function sortIndicator(sortKey: string | null): string {
                                         </Link>
                                     </Button>
                                     <Button
+                                        v-if="canDeleteProduct"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -412,7 +445,7 @@ function sortIndicator(sortKey: string | null): string {
                         </tr>
                         <tr v-if="!(products?.data?.length)">
                             <td
-                                :colspan="visibleColumns.length + 1"
+                                :colspan="visibleColumns.length + (showActionColumn ? 1 : 0)"
                                 class="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No products yet. Use “Add product” to create one.

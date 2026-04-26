@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\SaleReturn;
 use App\Models\Team;
 use App\Services\SaleReturnService;
+use App\Support\SaleListingPermissionScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,6 +27,19 @@ class SaleReturnController extends Controller
         $query = SaleReturn::query()
             ->forTeam($current_team)
             ->with(['parentSale.customer', 'parentSale.businessLocation']);
+
+        $user = $request->user();
+        if ($user && ! $user->ownsTeam($current_team)) {
+            if (
+                $user->hasPosPermission($current_team, 'access_own_sell_return')
+                && ! $user->hasPosPermission($current_team, 'access_sell_return')
+            ) {
+                $query->where(function ($q) use ($user): void {
+                    $q->where('sale_returns.created_by', $user->id)
+                        ->orWhereHas('parentSale', fn ($ps) => $ps->where('created_by', $user->id));
+                });
+            }
+        }
 
         if (! empty($filters['search'])) {
             $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']).'%';
@@ -90,6 +104,11 @@ class SaleReturnController extends Controller
             ->with(['lines.product', 'customer', 'businessLocation'])
             ->firstOrFail();
 
+        abort_unless(
+            SaleListingPermissionScope::canAccessSellReturn($request->user(), $current_team, $sale),
+            403,
+        );
+
         $parent = [
             'id' => $sale->id,
             'invoice_no' => $sale->invoice_no,
@@ -125,6 +144,11 @@ class SaleReturnController extends Controller
             ->forTeam($current_team)
             ->whereKey((int) $data['parent_sale_id'])
             ->firstOrFail();
+
+        abort_unless(
+            SaleListingPermissionScope::canAccessSellReturn($request->user(), $current_team, $parent),
+            403,
+        );
 
         unset($data['parent_sale_id']);
 

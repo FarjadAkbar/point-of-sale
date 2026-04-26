@@ -93,6 +93,14 @@ const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
 
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const canDiscountAccess = computed(() =>
+    posPermissions.value.includes('discount.access'),
+);
+
 const listSearch = ref(props.filters.search ?? '');
 const listPerPage = ref(String(props.filters.per_page ?? 15));
 
@@ -382,7 +390,11 @@ function goToPage(url: string | null) {
                     specific products.
                 </p>
             </div>
-            <Button type="button" @click="openModal">
+            <Button
+                v-if="canDiscountAccess"
+                type="button"
+                @click="openModal"
+            >
                 <Plus class="mr-1 size-4" />
                 Add discount
             </Button>

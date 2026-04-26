@@ -17,7 +17,7 @@ class PurchaseService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(Team $team, array $data, ?UploadedFile $document): Purchase
+    public function create(Team $team, array $data, ?UploadedFile $document, ?int $createdBy = null): Purchase
     {
         return DB::transaction(function () use ($team, $data, $document) {
             $documentPath = null;
@@ -50,6 +50,7 @@ class PurchaseService
 
             $purchase = Purchase::query()->create([
                 'team_id' => $team->id,
+                'created_by' => $createdBy,
                 'supplier_id' => (int) $data['supplier_id'],
                 'business_location_id' => (int) $data['business_location_id'],
                 'ref_no' => $data['ref_no'] ?? null,

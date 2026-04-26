@@ -8,6 +8,7 @@ use App\Http\Requests\Inventory\StoreStockTransferRequest;
 use App\Models\BusinessLocation;
 use App\Models\StockTransfer;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\StockTransferService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -23,8 +24,13 @@ class StockTransferController extends Controller
     public function index(StockTransferIndexRequest $request, Team $current_team): Response
     {
         $filters = $request->filters();
+        $restrictToUserId = $this->restrictToUserId($request->user(), $current_team);
         $query = StockTransfer::query()
             ->forTeam($current_team)
+            ->when(
+                $restrictToUserId !== null,
+                fn ($q) => $q->where('created_by', $restrictToUserId),
+            )
             ->with(['fromLocation', 'toLocation']);
 
         if (! empty($filters['search'])) {
@@ -102,5 +108,18 @@ class StockTransferController extends Controller
 
         return to_route('stock-transfers.index', ['current_team' => $current_team])
             ->with('success', 'Stock transfer saved.');
+    }
+
+    private function restrictToUserId(?User $user, Team $team): ?int
+    {
+        if (! $user || $user->ownsTeam($team) || $user->hasPosPermission($team, 'stock_transfer.view')) {
+            return null;
+        }
+
+        if ($user->hasPosPermission($team, 'stock_transfer.view_own')) {
+            return $user->id;
+        }
+
+        return null;
     }
 }

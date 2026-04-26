@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { InertiaForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 
@@ -26,6 +27,17 @@ const props = defineProps<{
     form: InertiaForm<RoleForm>;
     permissionGroups: PermissionGroup[];
 }>();
+
+const catalogCheckboxPermissions = computed(() =>
+    props.permissionGroups.flatMap((group) =>
+        (group.checkboxes ?? []).map((checkbox) => checkbox.value),
+    ),
+);
+
+const extraAssignedPermissions = computed(() => {
+    const known = new Set(catalogCheckboxPermissions.value);
+    return props.form.permissions.filter((permission) => !known.has(permission));
+});
 
 function hasPerm(value: string): boolean {
     return props.form.permissions.includes(value);
@@ -179,6 +191,41 @@ function setRadio(name: string, value: string) {
                         class="cursor-pointer font-normal leading-snug"
                     >
                         {{ cb.label }}
+                    </Label>
+                </div>
+            </div>
+        </section>
+
+        <section
+            v-if="extraAssignedPermissions.length"
+            class="space-y-3 border-b border-border pb-6 last:border-0"
+        >
+            <div>
+                <h3 class="text-base font-semibold">Other permissions</h3>
+                <p class="text-muted-foreground max-w-prose text-sm">
+                    Existing assigned permissions that are not in the current
+                    catalog.
+                </p>
+            </div>
+            <div class="grid gap-2">
+                <div
+                    v-for="permission in extraAssignedPermissions"
+                    :key="permission"
+                    class="flex items-start gap-2"
+                >
+                    <Checkbox
+                        :id="`perm-extra-${permission}`"
+                        :checked="hasPerm(permission)"
+                        @update:checked="
+                            (v: boolean | 'indeterminate') =>
+                                togglePerm(permission, v === true)
+                        "
+                    />
+                    <Label
+                        :for="`perm-extra-${permission}`"
+                        class="cursor-pointer font-normal leading-snug"
+                    >
+                        {{ permission }}
                     </Label>
                 </div>
             </div>

@@ -9,6 +9,7 @@ use App\Http\Requests\Warranties\UpdateWarrantyRequest;
 use App\Http\Requests\Warranties\WarrantyIndexRequest;
 use App\Http\Resources\WarrantyResource;
 use App\Models\Team;
+use App\Models\User;
 use App\Models\Warranty;
 use App\Services\WarrantyService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -27,12 +28,29 @@ class WarrantyController extends Controller
 
     public function index(WarrantyIndexRequest $request, Team $current_team): Response
     {
+        $this->authorizeWarrantyPermission($request->user(), $current_team, [
+            'warranty.view',
+            'warranty.view_own',
+            'warranty.create',
+            'warranty.update',
+            'warranty.delete',
+        ]);
+
         $filters = $request->filters();
+        if (
+            ! $request->user()?->hasPosPermission($current_team, 'warranty.view')
+            && $request->user()?->hasPosPermission($current_team, 'warranty.view_own')
+        ) {
+            $filters['created_by'] = $request->user()?->id;
+        }
         $paginator = $this->warrantyService->paginate($current_team, $filters);
         $paginator->through(fn (Warranty $w) => (new WarrantyResource($w))->resolve());
 
         $editing = null;
-        if ($editId = $request->query('edit')) {
+        if (
+            $request->user()?->hasPosPermission($current_team, 'warranty.update')
+            && ($editId = $request->query('edit'))
+        ) {
             $editing = $current_team->warranties()->whereKey($editId)->first();
         }
 
@@ -51,7 +69,8 @@ class WarrantyController extends Controller
 
     public function store(StoreWarrantyRequest $request, Team $current_team): RedirectResponse
     {
-        $this->warrantyService->create($current_team, $request->validated());
+        $this->authorizeWarrantyPermission($request->user(), $current_team, ['warranty.create']);
+        $this->warrantyService->create($current_team, $request->validated(), $request->user()?->id);
 
         return to_route('warranties.index', ['current_team' => $current_team])
             ->with('success', 'Warranty created.');
@@ -59,6 +78,7 @@ class WarrantyController extends Controller
 
     public function update(UpdateWarrantyRequest $request, Team $current_team, Warranty $warranty): RedirectResponse
     {
+        $this->authorizeWarrantyPermission($request->user(), $current_team, ['warranty.update']);
         $this->warrantyService->update($warranty, $request->validated());
 
         return to_route('warranties.index', ['current_team' => $current_team])
@@ -67,6 +87,7 @@ class WarrantyController extends Controller
 
     public function destroy(Request $request, Team $current_team, Warranty $warranty): RedirectResponse
     {
+        $this->authorizeWarrantyPermission($request->user(), $current_team, ['warranty.delete']);
         $this->warrantyService->delete($warranty);
 
         return to_route('warranties.index', ['current_team' => $current_team])
@@ -75,6 +96,7 @@ class WarrantyController extends Controller
 
     public function exportFile(WarrantyIndexRequest $request, Team $current_team, string $format): BinaryFileResponse|\Illuminate\Http\Response
     {
+        $this->authorizeWarrantyPermission($request->user(), $current_team, ['warranty.view', 'warranty.view_own']);
         $format = strtolower($format);
         abort_unless(in_array($format, ['csv', 'xlsx', 'pdf'], true), 404);
 
@@ -102,5 +124,13 @@ class WarrantyController extends Controller
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download($filename.'.pdf');
+    }
+
+    /**
+     * @param  array<int, string>  $permissions
+     */
+    private function authorizeWarrantyPermission(?User $user, Team $team, array $permissions): void
+    {
+        abort_unless($user?->hasAnyPosPermission($team, $permissions) ?? false, 403);
     }
 }

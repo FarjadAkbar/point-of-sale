@@ -32,7 +32,13 @@ class UnitService
      */
     public function filteredQuery(Team $team, array $filters): Builder
     {
-        return Unit::query()->forTeam($team)->filter($filters);
+        return Unit::query()
+            ->forTeam($team)
+            ->when(
+                ! empty($filters['created_by']),
+                fn (Builder $query) => $query->where('created_by', (int) $filters['created_by'])
+            )
+            ->filter($filters);
     }
 
     /**
@@ -59,9 +65,10 @@ class UnitService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(Team $team, array $data): Unit
+    public function create(Team $team, array $data, ?int $createdBy = null): Unit
     {
         $data['team_id'] = $team->id;
+        $data['created_by'] = $createdBy;
 
         return Unit::query()->create($data)->load('baseUnit');
     }

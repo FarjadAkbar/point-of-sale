@@ -10,6 +10,7 @@ use App\Http\Requests\Units\UpdateUnitRequest;
 use App\Http\Resources\UnitResource;
 use App\Models\Team;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\UnitService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -28,12 +29,29 @@ class UnitController extends Controller
 
     public function index(UnitIndexRequest $request, Team $current_team): Response
     {
+        $this->authorizeUnitPermission($request->user(), $current_team, [
+            'unit.view',
+            'unit.view_own',
+            'unit.create',
+            'unit.update',
+            'unit.delete',
+        ]);
+
         $filters = $request->filters();
+        if (
+            ! $request->user()?->hasPosPermission($current_team, 'unit.view')
+            && $request->user()?->hasPosPermission($current_team, 'unit.view_own')
+        ) {
+            $filters['created_by'] = $request->user()?->id;
+        }
         $paginator = $this->unitService->paginate($current_team, $filters);
         $paginator->through(fn (Unit $u) => (new UnitResource($u))->resolve());
 
         $editing = null;
-        if ($editId = $request->query('edit')) {
+        if (
+            $request->user()?->hasPosPermission($current_team, 'unit.update')
+            && ($editId = $request->query('edit'))
+        ) {
             $editing = $current_team->units()->whereKey($editId)->first();
             $editing?->load('baseUnit');
         }
@@ -57,7 +75,9 @@ class UnitController extends Controller
 
     public function store(StoreUnitRequest $request, Team $current_team): RedirectResponse
     {
-        $this->unitService->create($current_team, $request->validated());
+        $this->authorizeUnitPermission($request->user(), $current_team, ['unit.create']);
+
+        $this->unitService->create($current_team, $request->validated(), $request->user()?->id);
 
         return to_route('units.index', ['current_team' => $current_team])
             ->with('success', 'Unit created.');
@@ -65,13 +85,17 @@ class UnitController extends Controller
 
     public function quickStore(StoreUnitRequest $request, Team $current_team): JsonResponse
     {
-        $unit = $this->unitService->create($current_team, $request->validated());
+        $this->authorizeUnitPermission($request->user(), $current_team, ['unit.create']);
+
+        $unit = $this->unitService->create($current_team, $request->validated(), $request->user()?->id);
 
         return response()->json((new UnitResource($unit))->resolve(), 201);
     }
 
     public function update(UpdateUnitRequest $request, Team $current_team, Unit $unit): RedirectResponse
     {
+        $this->authorizeUnitPermission($request->user(), $current_team, ['unit.update']);
+
         $this->unitService->update($unit, $request->validated());
 
         return to_route('units.index', ['current_team' => $current_team])
@@ -80,6 +104,8 @@ class UnitController extends Controller
 
     public function destroy(Request $request, Team $current_team, Unit $unit): RedirectResponse
     {
+        $this->authorizeUnitPermission($request->user(), $current_team, ['unit.delete']);
+
         $this->unitService->delete($unit);
 
         return to_route('units.index', ['current_team' => $current_team])
@@ -88,6 +114,8 @@ class UnitController extends Controller
 
     public function exportFile(UnitIndexRequest $request, Team $current_team, string $format): BinaryFileResponse|\Illuminate\Http\Response
     {
+        $this->authorizeUnitPermission($request->user(), $current_team, ['unit.view']);
+
         $format = strtolower($format);
         abort_unless(in_array($format, ['csv', 'xlsx', 'pdf'], true), 404);
 
@@ -116,5 +144,13 @@ class UnitController extends Controller
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download($filename.'.pdf');
+    }
+
+    /**
+     * @param  array<int, string>  $permissions
+     */
+    private function authorizeUnitPermission(?User $user, Team $team, array $permissions): void
+    {
+        abort_unless($user?->hasAnyPosPermission($team, $permissions) ?? false, 403);
     }
 }

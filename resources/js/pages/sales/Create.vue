@@ -149,6 +149,24 @@ const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
 
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasPerm = (p: string): boolean => posPermissions.value.includes(p);
+const canEditProductPriceFromSaleScreen = computed(() =>
+    hasPerm('edit_product_price_from_sale_screen'),
+);
+const canEditProductDiscountFromSaleScreen = computed(() =>
+    hasPerm('edit_product_discount_from_sale_screen'),
+);
+const canEditSaleHeaderDiscount = computed(() => hasPerm('discount.access'));
+const canAccessTypesOfService = computed(() =>
+    hasPerm('access_types_of_service'),
+);
+const canEditInvoiceNumber = computed(() => hasPerm('edit_invoice_number'));
+const canAddSellPayment = computed(() => hasPerm('sell.payments'));
+
 const defaultServiceStaffId = (() => {
     const u = (page.props as { auth?: { user?: { id: number } } }).auth?.user;
 
@@ -716,7 +734,10 @@ function submitSale() {
                     </div>
                     <div class="grid gap-2">
                         <Label>Type of service</Label>
-                        <Select v-model="form.selling_price_group_id">
+                        <Select
+                            v-model="form.selling_price_group_id"
+                            :disabled="!canAccessTypesOfService"
+                        >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select price group (optional)" />
                             </SelectTrigger>
@@ -759,7 +780,10 @@ function submitSale() {
                     </div>
                     <div class="grid gap-2">
                         <Label>Service staff</Label>
-                        <Select v-model="form.service_staff_id">
+                        <Select
+                            v-model="form.service_staff_id"
+                            :disabled="!canAccessTypesOfService"
+                        >
                             <SelectTrigger>
                                 <SelectValue placeholder="Who is serving this sale?" />
                             </SelectTrigger>
@@ -831,6 +855,7 @@ function submitSale() {
                             id="inv-no"
                             v-model="form.invoice_no"
                             placeholder="Leave blank to auto-generate later"
+                            :disabled="!canEditInvoiceNumber"
                         />
                     </div>
                     <div class="grid gap-2">
@@ -971,6 +996,7 @@ function submitSale() {
                                         v-model="row.unit_price_before_discount"
                                         class="h-8 w-24"
                                         inputmode="decimal"
+                                        :disabled="!canEditProductPriceFromSaleScreen"
                                     />
                                 </td>
                                 <td class="px-2 py-2">
@@ -978,6 +1004,7 @@ function submitSale() {
                                         v-model="row.discount_percent"
                                         class="h-8 w-16"
                                         inputmode="decimal"
+                                        :disabled="!canEditProductDiscountFromSaleScreen"
                                     />
                                 </td>
                                 <td class="px-2 py-2">
@@ -1029,7 +1056,10 @@ function submitSale() {
                 <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div class="grid gap-2">
                         <Label>Discount type</Label>
-                        <Select v-model="form.discount_type">
+                        <Select
+                            v-model="form.discount_type"
+                            :disabled="!canEditSaleHeaderDiscount"
+                        >
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
@@ -1046,6 +1076,7 @@ function submitSale() {
                             id="sdisc-amt"
                             v-model="form.discount_amount"
                             inputmode="decimal"
+                            :disabled="!canEditSaleHeaderDiscount"
                         />
                     </div>
                     <div class="grid gap-2 md:col-span-2">
@@ -1154,6 +1185,7 @@ function submitSale() {
                             v-model="form.payment.amount"
                             inputmode="decimal"
                             required
+                            :disabled="!isDraftSale && !canAddSellPayment"
                         />
                     </div>
                     <div class="grid gap-2">
@@ -1163,11 +1195,15 @@ function submitSale() {
                             v-model="form.payment.paid_on"
                             type="datetime-local"
                             required
+                            :disabled="!isDraftSale && !canAddSellPayment"
                         />
                     </div>
                     <div class="grid gap-2">
                         <Label>Method *</Label>
-                        <Select v-model="form.payment.method">
+                        <Select
+                            v-model="form.payment.method"
+                            :disabled="!isDraftSale && !canAddSellPayment"
+                        >
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
@@ -1184,7 +1220,10 @@ function submitSale() {
                     </div>
                     <div class="grid gap-2">
                         <Label>Payment account</Label>
-                        <Select v-model="form.payment.payment_account_id">
+                        <Select
+                            v-model="form.payment.payment_account_id"
+                            :disabled="!isDraftSale && !canAddSellPayment"
+                        >
                             <SelectTrigger>
                                 <SelectValue placeholder="None" />
                             </SelectTrigger>
@@ -1208,6 +1247,7 @@ function submitSale() {
                         <Input
                             id="spay-bank"
                             v-model="form.payment.bank_account_number"
+                            :disabled="!isDraftSale && !canAddSellPayment"
                         />
                     </div>
                     <div class="grid gap-2 md:col-span-2 lg:col-span-3">
@@ -1217,6 +1257,7 @@ function submitSale() {
                             v-model="form.payment.note"
                             rows="2"
                             class="border-input bg-background min-h-[56px] w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none"
+                            :disabled="!isDraftSale && !canAddSellPayment"
                         />
                     </div>
                 </div>

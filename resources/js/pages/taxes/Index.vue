@@ -105,6 +105,18 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasTaxRatePermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateTaxRate = computed(() => hasTaxRatePermission('tax_rate.create'));
+const canUpdateTaxRate = computed(() => hasTaxRatePermission('tax_rate.update'));
+const canDeleteTaxRate = computed(() => hasTaxRatePermission('tax_rate.delete'));
+const showRateActionColumn = computed(
+    () => canUpdateTaxRate.value || canDeleteTaxRate.value,
+);
 
 const rateSearch = ref(props.rateFilters.search ?? '');
 const ratePerPage = ref(String(props.rateFilters.per_page ?? 15));
@@ -314,6 +326,10 @@ function openCreateRateModal() {
 }
 
 function openEditRateModal(row: TaxRateRow) {
+    if (!canUpdateTaxRate.value) {
+        return;
+    }
+
     router.get(
         taxesPageRoutes.index.url(teamSlug.value),
         { ...fullIndexQuery(), edit_rate: row.id },
@@ -387,6 +403,10 @@ function submitEditRate() {
 }
 
 function destroyRate(row: TaxRateRow) {
+    if (!canDeleteTaxRate.value) {
+        return;
+    }
+
     if (!confirm('Delete this tax rate?')) {
         return;
     }
@@ -549,7 +569,7 @@ function groupSortIndicator(sortKey: string | null): string {
                 <h2 class="text-lg font-semibold tracking-tight">
                     All your tax rates
                 </h2>
-                <Button type="button" @click="openCreateRateModal">
+                <Button v-if="canCreateTaxRate" type="button" @click="openCreateRateModal">
                     Add tax rate
                 </Button>
             </div>
@@ -612,6 +632,7 @@ function groupSortIndicator(sortKey: string | null): string {
                                 <span v-else>{{ col.label }}</span>
                             </th>
                             <th
+                                v-if="showRateActionColumn"
                                 class="bg-muted/40 px-3 py-2 text-right font-medium"
                             >
                                 Actions
@@ -631,11 +652,15 @@ function groupSortIndicator(sortKey: string | null): string {
                             >
                                 {{ displayRateCell(row, col.id) }}
                             </td>
-                            <td class="px-3 py-2 text-right">
+                            <td
+                                v-if="showRateActionColumn"
+                                class="px-3 py-2 text-right"
+                            >
                                 <div
                                     class="flex flex-wrap items-center justify-end gap-0.5"
                                 >
                                     <Button
+                                        v-if="canUpdateTaxRate"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -647,6 +672,7 @@ function groupSortIndicator(sortKey: string | null): string {
                                         <Pencil />
                                     </Button>
                                     <Button
+                                        v-if="canDeleteTaxRate"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -662,7 +688,7 @@ function groupSortIndicator(sortKey: string | null): string {
                         </tr>
                         <tr v-if="!(taxRates?.data?.length)">
                             <td
-                                :colspan="visibleRateColumns.length + 1"
+                                :colspan="visibleRateColumns.length + (showRateActionColumn ? 1 : 0)"
                                 class="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No tax rates yet.
@@ -805,6 +831,7 @@ function groupSortIndicator(sortKey: string | null): string {
         </section>
 
         <StandardFormModal
+            v-if="canCreateTaxRate"
             v-model:open="createRateModalOpen"
             title="Add tax rate"
             description="Name, percentage, and whether it is only used inside groups."
@@ -836,6 +863,7 @@ function groupSortIndicator(sortKey: string | null): string {
         </StandardFormModal>
 
         <StandardFormModal
+            v-if="canUpdateTaxRate"
             v-model:open="editRateModalOpen"
             title="Edit tax rate"
             :description="editingTaxRate?.name"

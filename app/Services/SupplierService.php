@@ -52,6 +52,13 @@ class SupplierService
     {
         return Supplier::query()
             ->forTeam($team)
+            ->when(
+                isset($filters['assigned_user_id']) && is_numeric($filters['assigned_user_id']),
+                fn (Builder $query) => $query->whereHas(
+                    'assignedUsers',
+                    fn (Builder $userQuery) => $userQuery->where('users.id', (int) $filters['assigned_user_id'])
+                )
+            )
             ->filter($filters);
     }
 

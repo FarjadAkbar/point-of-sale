@@ -112,8 +112,16 @@ return [
         'id' => 'warranty',
         'title' => 'Warranty',
         'select_all' => true,
+        'radios' => [
+            [
+                'name' => 'warranty_view',
+                'options' => [
+                    ['value' => 'warranty.view', 'label' => 'View all warranty'],
+                    ['value' => 'warranty.view_own', 'label' => 'View own warranty'],
+                ],
+            ],
+        ],
         'checkboxes' => [
-            ['value' => 'warranty.view', 'label' => 'View warranty'],
             ['value' => 'warranty.create', 'label' => 'Add warranty'],
             ['value' => 'warranty.update', 'label' => 'Edit warranty'],
             ['value' => 'warranty.delete', 'label' => 'Delete warranty'],
@@ -315,8 +323,16 @@ return [
         'id' => 'brand',
         'title' => 'Brand',
         'select_all' => true,
+        'radios' => [
+            [
+                'name' => 'brand_view',
+                'options' => [
+                    ['value' => 'brand.view', 'label' => 'View all brand'],
+                    ['value' => 'brand.view_own', 'label' => 'View own brand'],
+                ],
+            ],
+        ],
         'checkboxes' => [
-            ['value' => 'brand.view', 'label' => 'View brand'],
             ['value' => 'brand.create', 'label' => 'Add brand'],
             ['value' => 'brand.update', 'label' => 'Edit brand'],
             ['value' => 'brand.delete', 'label' => 'Delete brand'],
@@ -337,8 +353,16 @@ return [
         'id' => 'unit',
         'title' => 'Unit',
         'select_all' => true,
+        'radios' => [
+            [
+                'name' => 'unit_view',
+                'options' => [
+                    ['value' => 'unit.view', 'label' => 'View all unit'],
+                    ['value' => 'unit.view_own', 'label' => 'View own unit'],
+                ],
+            ],
+        ],
         'checkboxes' => [
-            ['value' => 'unit.view', 'label' => 'View unit'],
             ['value' => 'unit.create', 'label' => 'Add unit'],
             ['value' => 'unit.update', 'label' => 'Edit unit'],
             ['value' => 'unit.delete', 'label' => 'Delete unit'],

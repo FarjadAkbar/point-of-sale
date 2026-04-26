@@ -12,10 +12,25 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            PosPermissionCatalogSeeder::class,
-            BackfillMissingPosPermissionsSeeder::class,
-            DemoUsersSeeder::class,
-            PosRoleSeeder::class,
+            BrandUnitWarrantyPermissionSeeder::class,
+            ProductPermissionSeeder::class,
+            SettingsPermissionSeeder::class,
+            BookingPermissionSeeder::class,
+            PurchasePermissionSeeder::class,
+            CustomerPermissionSeeder::class,
+            SupplierRoleUserPermissionSeeder::class,
+            StockAdjustmentPermissionSeeder::class,
+            StockTransferPermissionSeeder::class,
+            SellPermissionSeeder::class,
+            DraftPermissionSeeder::class,
+            QuotationPermissionSeeder::class,
+            ShipmentPermissionSeeder::class,
+            CashRegisterPermissionSeeder::class,
+            BrandPermissionSeeder::class,
+            TaxRatePermissionSeeder::class,
+            ReportPermissionSeeder::class,
+            ExpensePermissionSeeder::class,
+            RestaurantPosUsersSeeder::class,
         ]);
     }
 }

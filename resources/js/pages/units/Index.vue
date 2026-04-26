@@ -90,6 +90,20 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasUnitPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const hasAnyUnitPermission = (permissions: string[]): boolean =>
+    permissions.some((permission) => hasUnitPermission(permission));
+const canCreateUnit = computed(() => hasUnitPermission('unit.create'));
+const canUpdateUnit = computed(() => hasUnitPermission('unit.update'));
+const canDeleteUnit = computed(() => hasUnitPermission('unit.delete'));
+const showActionColumn = computed(
+    () => canUpdateUnit.value || canDeleteUnit.value,
+);
 
 const search = ref(props.filters.search ?? '');
 const perPage = ref(String(props.filters.per_page ?? 15));
@@ -225,6 +239,10 @@ function openCreateModal() {
 }
 
 function openEditModal(row: Row) {
+    if (!canUpdateUnit.value) {
+        return;
+    }
+
     router.get(
         unitRoutes.index.url(teamSlug.value),
         indexQuery({ edit: row.id }),
@@ -290,6 +308,10 @@ function submitEdit() {
 }
 
 function destroyUnit(row: Row) {
+    if (!canDeleteUnit.value) {
+        return;
+    }
+
     if (!confirm('Delete this unit?')) {
         return;
     }
@@ -382,7 +404,9 @@ function sortIndicator(sortKey: string | null): string {
                     Measurement units, conversions, exports, and sorting.
                 </p>
             </div>
-            <Button type="button" @click="openCreateModal">Add unit</Button>
+            <Button v-if="canCreateUnit" type="button" @click="openCreateModal">
+                Add unit
+            </Button>
         </div>
 
         <StandardDataTable
@@ -466,6 +490,7 @@ function sortIndicator(sortKey: string | null): string {
                                 <span v-else>{{ col.label }}</span>
                             </th>
                             <th
+                                v-if="showActionColumn"
                                 class="bg-muted/40 px-3 py-2 text-right font-medium print:hidden"
                             >
                                 Actions
@@ -485,11 +510,15 @@ function sortIndicator(sortKey: string | null): string {
                             >
                                 {{ displayCell(row, col.id) }}
                             </td>
-                            <td class="px-3 py-2 text-right print:hidden">
+                            <td
+                                v-if="showActionColumn"
+                                class="px-3 py-2 text-right print:hidden"
+                            >
                                 <div
                                     class="flex flex-wrap items-center justify-end gap-0.5"
                                 >
                                     <Button
+                                        v-if="canUpdateUnit"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -501,6 +530,7 @@ function sortIndicator(sortKey: string | null): string {
                                         <Pencil />
                                     </Button>
                                     <Button
+                                        v-if="canDeleteUnit"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -516,7 +546,7 @@ function sortIndicator(sortKey: string | null): string {
                         </tr>
                         <tr v-if="!(units?.data?.length)">
                             <td
-                                :colspan="visibleColumns.length + 1"
+                                :colspan="visibleColumns.length + (showActionColumn ? 1 : 0)"
                                 class="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No units match your filters.

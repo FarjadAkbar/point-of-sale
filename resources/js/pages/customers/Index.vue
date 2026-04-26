@@ -99,6 +99,24 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasCustomerPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateCustomer = computed(() =>
+    hasCustomerPermission('customer.create'),
+);
+const canUpdateCustomer = computed(() =>
+    hasCustomerPermission('customer.update'),
+);
+const canDeleteCustomer = computed(() =>
+    hasCustomerPermission('customer.delete'),
+);
+const showActionColumn = computed(
+    () => canUpdateCustomer.value || canDeleteCustomer.value,
+);
 
 const search = ref(props.filters.search ?? '');
 const partyRoleFilter = ref(
@@ -238,6 +256,10 @@ function openCreateModal() {
 }
 
 function openEditModal(row: CustomerRow) {
+    if (!canUpdateCustomer.value) {
+        return;
+    }
+
     router.get(
         customerRoutes.index.url(teamSlug.value),
         indexQuery({ edit: row.id }),
@@ -280,6 +302,10 @@ function submitEdit() {
 }
 
 function destroyCustomer(row: CustomerRow) {
+    if (!canDeleteCustomer.value) {
+        return;
+    }
+
     if (!confirm('Delete this customer? This cannot be undone.')) {
         return;
     }
@@ -379,7 +405,7 @@ function sortIndicator(sortKey: string): string {
                     filters. Export, print, columns, paging, and sort.
                 </p>
             </div>
-            <Button type="button" @click="openCreateModal">
+            <Button v-if="canCreateCustomer" type="button" @click="openCreateModal">
                 Add customer
             </Button>
         </div>
@@ -500,6 +526,7 @@ function sortIndicator(sortKey: string): string {
                                 </button>
                             </th>
                             <th
+                                v-if="showActionColumn"
                                 class="bg-muted/40 px-3 py-2 text-right font-medium print:hidden"
                             >
                                 Actions
@@ -519,11 +546,15 @@ function sortIndicator(sortKey: string): string {
                             >
                                 {{ displayCell(row, col.id) }}
                             </td>
-                            <td class="px-3 py-2 text-right print:hidden">
+                            <td
+                                v-if="showActionColumn"
+                                class="px-3 py-2 text-right print:hidden"
+                            >
                                 <div
                                     class="flex flex-wrap items-center justify-end gap-0.5"
                                 >
                                     <Button
+                                        v-if="canUpdateCustomer"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -535,6 +566,7 @@ function sortIndicator(sortKey: string): string {
                                         <Pencil />
                                     </Button>
                                     <Button
+                                        v-if="canDeleteCustomer"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -550,7 +582,7 @@ function sortIndicator(sortKey: string): string {
                         </tr>
                         <tr v-if="!(customers?.data?.length)">
                             <td
-                                :colspan="visibleColumns.length + 1"
+                                :colspan="visibleColumns.length + (showActionColumn ? 1 : 0)"
                                 class="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No customers match your filters.
@@ -561,6 +593,7 @@ function sortIndicator(sortKey: string): string {
         </StandardDataTable>
 
         <StandardFormModal
+            v-if="canCreateCustomer"
             v-model:open="createModalOpen"
             title="Add customer"
             description="Customer contact profile, assignments, and related fields."
@@ -599,6 +632,7 @@ function sortIndicator(sortKey: string): string {
         </StandardFormModal>
 
         <StandardFormModal
+            v-if="canUpdateCustomer"
             v-model:open="editModalOpen"
             title="Edit customer"
             :description="

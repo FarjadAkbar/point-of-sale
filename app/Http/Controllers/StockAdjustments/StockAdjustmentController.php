@@ -8,6 +8,7 @@ use App\Http\Requests\Inventory\StoreStockAdjustmentRequest;
 use App\Models\BusinessLocation;
 use App\Models\StockAdjustment;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\StockAdjustmentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -23,8 +24,13 @@ class StockAdjustmentController extends Controller
     public function index(StockAdjustmentIndexRequest $request, Team $current_team): Response
     {
         $filters = $request->filters();
+        $restrictToUserId = $this->restrictToUserId($request->user(), $current_team);
         $query = StockAdjustment::query()
             ->forTeam($current_team)
+            ->when(
+                $restrictToUserId !== null,
+                fn ($q) => $q->where('created_by', $restrictToUserId),
+            )
             ->with('businessLocation');
 
         if (! empty($filters['search'])) {
@@ -98,5 +104,18 @@ class StockAdjustmentController extends Controller
 
         return to_route('stock-adjustments.index', ['current_team' => $current_team])
             ->with('success', 'Stock adjustment saved.');
+    }
+
+    private function restrictToUserId(?User $user, Team $team): ?int
+    {
+        if (! $user || $user->ownsTeam($team) || $user->hasPosPermission($team, 'stock_adjustment.view')) {
+            return null;
+        }
+
+        if ($user->hasPosPermission($team, 'view_own_stock_adjustment')) {
+            return $user->id;
+        }
+
+        return null;
     }
 }

@@ -123,6 +123,18 @@ type ProductEditPayload = {
 
 const page = usePage();
 const teamSlug = computed(() => (page.props.currentTeam as Team).slug);
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasProductPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canAddOpeningStock = computed(() =>
+    hasProductPermission('product.opening_stock'),
+);
+const canViewPurchasePrice = computed(() =>
+    hasProductPermission('view_purchase_price'),
+);
 
 type BaseUnitOption = { id: number; name: string; short_name: string };
 
@@ -1022,7 +1034,10 @@ function submit() {
                         Optional starting quantity for each selected location
                         (zero is fine).
                     </p>
-                    <div class="grid gap-3 sm:grid-cols-2">
+                    <div
+                        v-if="canAddOpeningStock"
+                        class="grid gap-3 sm:grid-cols-2"
+                    >
                         <div
                             v-for="loc in selectedLocationRows"
                             :key="loc.id"
@@ -1042,6 +1057,12 @@ function submit() {
                             />
                         </div>
                     </div>
+                    <p
+                        v-else
+                        class="text-xs text-muted-foreground"
+                    >
+                        You do not have permission to add opening stock.
+                    </p>
                 </div>
                 <div class="flex items-center gap-2">
                     <Checkbox
@@ -1172,6 +1193,7 @@ function submit() {
                                         <Input
                                             v-model="form.single_dpp"
                                             inputmode="decimal"
+                                            :disabled="!canViewPurchasePrice"
                                         />
                                     </div>
                                     <div>
@@ -1179,6 +1201,7 @@ function submit() {
                                         <Input
                                             v-model="form.single_dpp_inc_tax"
                                             inputmode="decimal"
+                                            :disabled="!canViewPurchasePrice"
                                         />
                                     </div>
                                 </div>
@@ -1259,6 +1282,7 @@ function submit() {
                                         v-model="row.purchase_price_exc_tax"
                                         class="h-8"
                                         inputmode="decimal"
+                                        :disabled="!canViewPurchasePrice"
                                         @update:model-value="recalcComboRow(i)"
                                     />
                                 </td>
@@ -1366,10 +1390,18 @@ function submit() {
                                     <Input v-model="r.value" class="h-8" required />
                                 </td>
                                 <td class="px-2 py-1">
-                                    <Input v-model="r.dpp" class="h-8" />
+                                    <Input
+                                        v-model="r.dpp"
+                                        class="h-8"
+                                        :disabled="!canViewPurchasePrice"
+                                    />
                                 </td>
                                 <td class="px-2 py-1">
-                                    <Input v-model="r.dpp_inc_tax" class="h-8" />
+                                    <Input
+                                        v-model="r.dpp_inc_tax"
+                                        class="h-8"
+                                        :disabled="!canViewPurchasePrice"
+                                    />
                                 </td>
                                 <td class="px-2 py-1">
                                     <Input v-model="r.profit_percent" class="h-8" />

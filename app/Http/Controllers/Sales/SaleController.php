@@ -16,6 +16,7 @@ use App\Models\Sale;
 use App\Models\SaleActivity;
 use App\Models\Team;
 use App\Services\SaleService;
+use App\Support\SaleListingPermissionScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,8 @@ class SaleController extends Controller
             ->whereNot('status', 'draft')
             ->whereNot('status', 'quotation')
             ->with(['customer', 'businessLocation']);
+
+        SaleListingPermissionScope::apply($query, $request->user(), $current_team);
 
         if (! empty($filters['search'])) {
             $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']).'%';
@@ -99,6 +102,8 @@ class SaleController extends Controller
             ->where('status', 'draft')
             ->with(['customer', 'businessLocation']);
 
+        SaleListingPermissionScope::applyDraft($query, $request->user(), $current_team);
+
         if (! empty($filters['search'])) {
             $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']).'%';
             $query->where(function ($q) use ($term) {
@@ -125,8 +130,19 @@ class SaleController extends Controller
         $paginator = $query->paginate($perPage)->withQueryString();
         $paginator->through(fn (Sale $s) => (new SaleResource($s))->resolve());
 
+        $customers = Customer::query()
+            ->forTeam($current_team)
+            ->orderBy('business_name')
+            ->orderBy('first_name')
+            ->get(['id', 'business_name', 'first_name', 'last_name'])
+            ->map(fn (Customer $c) => [
+                'id' => $c->id,
+                'display_name' => $c->display_name,
+            ]);
+
         return Inertia::render('sales/drafts/Index', [
             'sales' => $paginator,
+            'customers' => $customers,
             'filters' => [
                 'search' => $filters['search'] ?? '',
                 'sort' => $filters['sort'] ?? 'created_at',
@@ -144,6 +160,8 @@ class SaleController extends Controller
             ->where('status', 'quotation')
             ->with(['customer', 'businessLocation']);
 
+        SaleListingPermissionScope::applyQuotation($query, $request->user(), $current_team);
+
         if (! empty($filters['search'])) {
             $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']).'%';
             $query->where(function ($q) use ($term) {
@@ -170,8 +188,19 @@ class SaleController extends Controller
         $paginator = $query->paginate($perPage)->withQueryString();
         $paginator->through(fn (Sale $s) => (new SaleResource($s))->resolve());
 
+        $customers = Customer::query()
+            ->forTeam($current_team)
+            ->orderBy('business_name')
+            ->orderBy('first_name')
+            ->get(['id', 'business_name', 'first_name', 'last_name'])
+            ->map(fn (Customer $c) => [
+                'id' => $c->id,
+                'display_name' => $c->display_name,
+            ]);
+
         return Inertia::render('sales/quotations/Index', [
             'sales' => $paginator,
+            'customers' => $customers,
             'filters' => [
                 'search' => $filters['search'] ?? '',
                 'sort' => $filters['sort'] ?? 'created_at',
@@ -232,9 +261,16 @@ class SaleController extends Controller
             ->with('success', 'Quotation saved.');
     }
 
-    public function detail(Team $current_team, Sale $sale): JsonResponse
+    public function detail(Request $request, Team $current_team, Sale $sale): JsonResponse
     {
         abort_unless($sale->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+        if ($sale->status === 'draft') {
+            abort_unless(SaleListingPermissionScope::canViewDraft($request->user(), $current_team, $sale), 403);
+        } elseif ($sale->status === 'quotation') {
+            abort_unless(SaleListingPermissionScope::canViewQuotation($request->user(), $current_team, $sale), 403);
+        } else {
+            abort_unless(SaleListingPermissionScope::canView($request->user(), $current_team, $sale), 403);
+        }
 
         $sale->load([
             'customer',
@@ -321,6 +357,16 @@ class SaleController extends Controller
     public function update(UpdateSaleRequest $request, Team $current_team, Sale $sale): RedirectResponse
     {
         abort_unless($sale->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+        if ($sale->status === 'draft') {
+            abort_unless(SaleListingPermissionScope::canViewDraft($request->user(), $current_team, $sale), 403);
+            abort_unless($request->user()?->hasPosPermission($current_team, 'draft.update'), 403);
+        } elseif ($sale->status === 'quotation') {
+            abort_unless(SaleListingPermissionScope::canViewQuotation($request->user(), $current_team, $sale), 403);
+            abort_unless($request->user()?->hasPosPermission($current_team, 'quotation.update'), 403);
+        } else {
+            abort_unless(SaleListingPermissionScope::canView($request->user(), $current_team, $sale), 403);
+            abort_unless($request->user()?->hasPosPermission($current_team, 'direct_sell.update'), 403);
+        }
 
         $sale->update($request->validated());
 
@@ -337,6 +383,8 @@ class SaleController extends Controller
     public function updateShipping(UpdateSaleShippingRequest $request, Team $current_team, Sale $sale): RedirectResponse
     {
         abort_unless($sale->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+        abort_unless(SaleListingPermissionScope::canView($request->user(), $current_team, $sale), 403);
+        abort_unless($request->user()?->hasPosPermission($current_team, 'direct_sell.update'), 403);
 
         $this->saleService->updateShipping(
             $current_team,
@@ -348,9 +396,19 @@ class SaleController extends Controller
         return back()->with('success', 'Shipping details saved.');
     }
 
-    public function destroy(Team $current_team, Sale $sale): RedirectResponse
+    public function destroy(Request $request, Team $current_team, Sale $sale): RedirectResponse
     {
         abort_unless($sale->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+        if ($sale->status === 'draft') {
+            abort_unless(SaleListingPermissionScope::canViewDraft($request->user(), $current_team, $sale), 403);
+            abort_unless($request->user()?->hasPosPermission($current_team, 'draft.delete'), 403);
+        } elseif ($sale->status === 'quotation') {
+            abort_unless(SaleListingPermissionScope::canViewQuotation($request->user(), $current_team, $sale), 403);
+            abort_unless($request->user()?->hasPosPermission($current_team, 'quotation.delete'), 403);
+        } else {
+            abort_unless(SaleListingPermissionScope::canView($request->user(), $current_team, $sale), 403);
+            abort_unless($request->user()?->hasPosPermission($current_team, 'direct_sell.delete'), 403);
+        }
 
         try {
             $this->saleService->deleteSale($current_team, $sale);
@@ -365,6 +423,7 @@ class SaleController extends Controller
     public function printInvoice(Request $request, Team $current_team, Sale $sale): View
     {
         abort_unless($sale->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+        abort_unless(SaleListingPermissionScope::canView($request->user(), $current_team, $sale), 403);
         $sale->load(['customer', 'businessLocation', 'lines.product', 'payments']);
 
         return view('sales.prints.invoice', [
@@ -376,6 +435,7 @@ class SaleController extends Controller
     public function printPackingSlip(Request $request, Team $current_team, Sale $sale): View
     {
         abort_unless($sale->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+        abort_unless(SaleListingPermissionScope::canView($request->user(), $current_team, $sale), 403);
         $sale->load(['customer', 'businessLocation', 'lines.product']);
 
         return view('sales.prints.packing-slip', [
@@ -387,6 +447,7 @@ class SaleController extends Controller
     public function printDeliveryNote(Request $request, Team $current_team, Sale $sale): View
     {
         abort_unless($sale->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+        abort_unless(SaleListingPermissionScope::canView($request->user(), $current_team, $sale), 403);
         $sale->load(['customer', 'businessLocation', 'lines.product', 'payments']);
 
         return view('sales.prints.delivery-note', [
@@ -398,6 +459,7 @@ class SaleController extends Controller
     public function invoiceLink(Request $request, Team $current_team, Sale $sale): JsonResponse
     {
         abort_unless($sale->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+        abort_unless(SaleListingPermissionScope::canView($request->user(), $current_team, $sale), 403);
 
         $url = URL::route('sales.documents.invoice', [
             'current_team' => $current_team->slug,

@@ -33,10 +33,26 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasRolePermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateRole = computed(() => hasRolePermission('roles.create'));
+const canUpdateRole = computed(() => hasRolePermission('roles.update'));
+const canDeleteRole = computed(() => hasRolePermission('roles.delete'));
+const showActionColumn = computed(
+    () => canUpdateRole.value || canDeleteRole.value,
+);
 const search = ref('');
 const perPage = ref('15');
 
 function remove(row: PosRoleRow) {
+    if (!canDeleteRole.value) {
+        return;
+    }
+
     if (
         !confirm(
             `Delete role "${row.name}"? This cannot be undone.`,
@@ -64,7 +80,7 @@ function remove(row: PosRoleRow) {
                     Define POS permissions for staff (Ultimate POS–style).
                 </p>
             </div>
-            <Button as-child>
+            <Button v-if="canCreateRole" as-child>
                 <Link :href="posRoleRoutes.create.url(teamSlug)">
                     Add role
                 </Link>
@@ -86,7 +102,10 @@ function remove(row: PosRoleRow) {
                             Service staff
                         </th>
                         <th class="px-3 py-2 text-left font-medium">Locked</th>
-                        <th class="px-3 py-2 text-right font-medium">
+                        <th
+                            v-if="showActionColumn"
+                            class="px-3 py-2 text-right font-medium"
+                        >
                             Actions
                         </th>
                     </tr>
@@ -104,10 +123,13 @@ function remove(row: PosRoleRow) {
                         <td class="px-3 py-2">
                             {{ row.is_locked ? 'Yes' : 'No' }}
                         </td>
-                        <td class="px-3 py-2 text-right">
+                        <td
+                            v-if="showActionColumn"
+                            class="px-3 py-2 text-right"
+                        >
                             <div class="flex justify-end gap-1">
                                 <Button
-                                    v-if="!row.is_locked"
+                                    v-if="!row.is_locked && canUpdateRole"
                                     variant="ghost"
                                     size="icon"
                                     class="size-8"
@@ -125,7 +147,7 @@ function remove(row: PosRoleRow) {
                                     </Link>
                                 </Button>
                                 <Button
-                                    v-if="!row.is_locked"
+                                    v-if="!row.is_locked && canDeleteRole"
                                     variant="ghost"
                                     size="icon"
                                     class="text-destructive size-8"

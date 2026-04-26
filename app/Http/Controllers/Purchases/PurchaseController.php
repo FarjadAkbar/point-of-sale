@@ -12,6 +12,7 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\TaxRate;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\PurchaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -28,8 +29,13 @@ class PurchaseController extends Controller
     public function index(PurchaseIndexRequest $request, Team $current_team): Response
     {
         $filters = $request->filters();
+        $restrictToUserId = $this->purchaseRestrictToUserId($request->user(), $current_team);
         $query = Purchase::query()
             ->forTeam($current_team)
+            ->when(
+                $restrictToUserId !== null,
+                fn ($q) => $q->where('created_by', $restrictToUserId),
+            )
             ->with(['supplier', 'businessLocation']);
 
         if (! empty($filters['search'])) {
@@ -129,7 +135,7 @@ class PurchaseController extends Controller
         $document = $request->file('document');
         unset($data['document']);
 
-        $this->purchaseService->create($current_team, $data, $document);
+        $this->purchaseService->create($current_team, $data, $document, $request->user()?->id);
 
         return to_route('purchases.index', ['current_team' => $current_team])
             ->with('success', 'Purchase saved.');
@@ -138,6 +144,7 @@ class PurchaseController extends Controller
     public function detail(Team $current_team, Purchase $purchase): JsonResponse
     {
         abort_unless($purchase->team_id === $current_team->id, SymfonyResponse::HTTP_NOT_FOUND);
+        abort_unless($this->canViewPurchase(request()->user(), $current_team, $purchase), SymfonyResponse::HTTP_FORBIDDEN);
 
         $purchase->load([
             'supplier',
@@ -237,5 +244,39 @@ class PurchaseController extends Controller
                 'activities' => [],
             ],
         ]);
+    }
+
+    private function purchaseRestrictToUserId(?User $user, Team $team): ?int
+    {
+        if (! $user) {
+            return null;
+        }
+
+        if ($user->ownsTeam($team) || $user->hasPosPermission($team, 'purchase.view')) {
+            return null;
+        }
+
+        if ($user->hasPosPermission($team, 'view_own_purchase')) {
+            return $user->id;
+        }
+
+        return null;
+    }
+
+    private function canViewPurchase(?User $user, Team $team, Purchase $purchase): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->ownsTeam($team) || $user->hasPosPermission($team, 'purchase.view')) {
+            return true;
+        }
+
+        if ($user->hasPosPermission($team, 'view_own_purchase')) {
+            return (int) $purchase->created_by === (int) $user->id;
+        }
+
+        return false;
     }
 }

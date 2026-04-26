@@ -63,6 +63,15 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasPurchasePermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreatePurchase = computed(() =>
+    hasPurchasePermission('purchase.create'),
+);
 
 const search = ref(props.filters.search ?? '');
 const perPage = ref(String(props.filters.per_page ?? 15));
@@ -199,7 +208,7 @@ function sortIndicator(sortKey: string | null): string {
                     Supplier purchases and stock intake.
                 </p>
             </div>
-            <Button as-child>
+            <Button v-if="canCreatePurchase" as-child>
                 <Link :href="purchaseRoutes.create.url(teamSlug)">
                     <Plus class="mr-1 size-4" />
                     Add purchase
@@ -283,6 +292,7 @@ function sortIndicator(sortKey: string | null): string {
                         >
                             No purchases yet.
                             <Button
+                                v-if="canCreatePurchase"
                                 as-child
                                 variant="link"
                                 class="ml-1 h-auto p-0"

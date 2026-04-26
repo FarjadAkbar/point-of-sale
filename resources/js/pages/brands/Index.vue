@@ -75,6 +75,18 @@ const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
 );
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasBrandPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateBrand = computed(() => hasBrandPermission('brand.create'));
+const canUpdateBrand = computed(() => hasBrandPermission('brand.update'));
+const canDeleteBrand = computed(() => hasBrandPermission('brand.delete'));
+const showActionColumn = computed(
+    () => canUpdateBrand.value || canDeleteBrand.value,
+);
 
 const search = ref(props.filters.search ?? '');
 const perPage = ref(String(props.filters.per_page ?? 15));
@@ -191,6 +203,10 @@ function openCreateModal() {
 }
 
 function openEditModal(row: Row) {
+    if (!canUpdateBrand.value) {
+        return;
+    }
+
     router.get(
         brandRoutes.index.url(teamSlug.value),
         indexQuery({ edit: row.id }),
@@ -244,6 +260,10 @@ function submitEdit() {
 }
 
 function destroyBrand(row: Row) {
+    if (!canDeleteBrand.value) {
+        return;
+    }
+
     if (!confirm('Delete this brand?')) {
         return;
     }
@@ -320,7 +340,9 @@ function sortIndicator(sortKey: string | null): string {
                     Brand catalog, exports, and sorting.
                 </p>
             </div>
-            <Button type="button" @click="openCreateModal">Add brand</Button>
+            <Button v-if="canCreateBrand" type="button" @click="openCreateModal">
+                Add brand
+            </Button>
         </div>
 
         <StandardDataTable
@@ -404,6 +426,7 @@ function sortIndicator(sortKey: string | null): string {
                                 <span v-else>{{ col.label }}</span>
                             </th>
                             <th
+                                v-if="showActionColumn"
                                 class="bg-muted/40 px-3 py-2 text-right font-medium print:hidden"
                             >
                                 Actions
@@ -423,11 +446,15 @@ function sortIndicator(sortKey: string | null): string {
                             >
                                 {{ displayCell(row, col.id) }}
                             </td>
-                            <td class="px-3 py-2 text-right print:hidden">
+                            <td
+                                v-if="showActionColumn"
+                                class="px-3 py-2 text-right print:hidden"
+                            >
                                 <div
                                     class="flex flex-wrap items-center justify-end gap-0.5"
                                 >
                                     <Button
+                                        v-if="canUpdateBrand"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -439,6 +466,7 @@ function sortIndicator(sortKey: string | null): string {
                                         <Pencil />
                                     </Button>
                                     <Button
+                                        v-if="canDeleteBrand"
                                         type="button"
                                         variant="ghost"
                                         size="icon-sm"
@@ -454,7 +482,7 @@ function sortIndicator(sortKey: string | null): string {
                         </tr>
                         <tr v-if="!(brands?.data?.length)">
                             <td
-                                :colspan="visibleColumns.length + 1"
+                                :colspan="visibleColumns.length + (showActionColumn ? 1 : 0)"
                                 class="px-3 py-8 text-center text-muted-foreground"
                             >
                                 No brands match your filters.
@@ -465,6 +493,7 @@ function sortIndicator(sortKey: string | null): string {
         </StandardDataTable>
 
         <StandardFormModal
+            v-if="canCreateBrand"
             v-model:open="createModalOpen"
             title="Add brand"
             description="Name, description, and repair flag."
@@ -496,6 +525,7 @@ function sortIndicator(sortKey: string | null): string {
         </StandardFormModal>
 
         <StandardFormModal
+            v-if="canUpdateBrand"
             v-model:open="editModalOpen"
             title="Edit brand"
             :description="editingBrand?.name"

@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Sales;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\ShipmentIndexRequest;
 use App\Models\Sale;
+use App\Models\SalesCommissionAgent;
 use App\Models\Team;
+use App\Models\User;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -14,10 +16,13 @@ class ShipmentController extends Controller
     public function index(ShipmentIndexRequest $request, Team $current_team): Response
     {
         $filters = $request->filters();
+        $user = $request->user();
         $query = Sale::query()
             ->forTeam($current_team)
             ->where('status', 'final')
             ->with(['customer', 'businessLocation']);
+
+        $this->applyShipmentScope($query, $user, $current_team);
 
         if (! empty($filters['search'])) {
             $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $filters['search']).'%';
@@ -79,5 +84,51 @@ class ShipmentController extends Controller
                 'per_page' => $filters['per_page'] ?? 15,
             ],
         ]);
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Sale>  $query
+     */
+    private function applyShipmentScope(\Illuminate\Database\Eloquent\Builder $query, ?User $user, Team $team): void
+    {
+        if (! $user || $user->ownsTeam($team)) {
+            return;
+        }
+
+        $hasAll = $user->hasPosPermission($team, 'access_shipping');
+        $hasOwn = $user->hasPosPermission($team, 'access_own_shipping');
+        $hasCommissionOwn = $user->hasPosPermission($team, 'access_commission_agent_shipping');
+        $pendingOnly = $user->hasPosPermission($team, 'access_pending_shipments_only');
+
+        if (! $hasAll) {
+            $query->where(function ($q) use ($user, $team, $hasOwn, $hasCommissionOwn): void {
+                if ($hasOwn) {
+                    $q->orWhere('created_by', $user->id);
+                }
+
+                if ($hasCommissionOwn) {
+                    $agentIds = SalesCommissionAgent::query()
+                        ->forTeam($team)
+                        ->where('email', $user->email)
+                        ->pluck('id');
+
+                    if ($agentIds->isNotEmpty()) {
+                        $q->orWhereIn('sales_commission_agent_id', $agentIds);
+                    }
+                }
+            });
+        }
+
+        if (! $hasAll && ! $hasOwn && ! $hasCommissionOwn) {
+            $query->whereRaw('1 = 0');
+            return;
+        }
+
+        if ($pendingOnly) {
+            $query->where(function ($q): void {
+                $q->whereNull('shipping_status')
+                    ->orWhere('shipping_status', 'pending');
+            });
+        }
     }
 }

@@ -13,9 +13,9 @@ class BookingService
     /**
      * @param  array<string, mixed>  $filters
      */
-    public function paginate(Team $team, array $filters): LengthAwarePaginator
+    public function paginate(Team $team, array $filters, ?int $restrictToUserId = null): LengthAwarePaginator
     {
-        $query = $this->filteredQuery($team, $filters);
+        $query = $this->filteredQuery($team, $filters, $restrictToUserId);
         $sort = $filters['sort'] ?? 'starts_at';
         $direction = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy(
@@ -32,10 +32,17 @@ class BookingService
      *
      * @return Collection<int, Booking>
      */
-    public function todaysForTeam(Team $team): Collection
+    public function todaysForTeam(Team $team, ?int $restrictToUserId = null): Collection
     {
         return Booking::query()
             ->forTeam($team)
+            ->when(
+                $restrictToUserId !== null,
+                fn (Builder $q) => $q->where(function (Builder $q2) use ($restrictToUserId): void {
+                    $q2->where('correspondent_user_id', $restrictToUserId)
+                        ->orWhere('service_staff_user_id', $restrictToUserId);
+                }),
+            )
             ->with([
                 'customer:id,entity_type,business_name,first_name,middle_name,last_name,customer_code,mobile',
                 'businessLocation:id,name',
@@ -52,10 +59,17 @@ class BookingService
      * @param  array<string, mixed>  $filters
      * @return Builder<Booking>
      */
-    public function filteredQuery(Team $team, array $filters): Builder
+    public function filteredQuery(Team $team, array $filters, ?int $restrictToUserId = null): Builder
     {
         return Booking::query()
             ->forTeam($team)
+            ->when(
+                $restrictToUserId !== null,
+                fn (Builder $q) => $q->where(function (Builder $q2) use ($restrictToUserId): void {
+                    $q2->where('correspondent_user_id', $restrictToUserId)
+                        ->orWhere('service_staff_user_id', $restrictToUserId);
+                }),
+            )
             ->with([
                 'customer:id,entity_type,business_name,first_name,middle_name,last_name,customer_code,mobile',
                 'businessLocation:id,name',

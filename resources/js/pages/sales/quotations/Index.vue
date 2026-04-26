@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { useDebounceFn, useStorage } from '@vueuse/core';
 import { Plus } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+import SaleRowActions from '@/components/sales/SaleRowActions.vue';
 import StandardDataTable from '@/components/StandardDataTable.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +42,7 @@ type Paginated = {
 
 const props = defineProps<{
     sales: Paginated;
+    customers: { id: number; display_name: string }[];
     filters: {
         search: string;
         sort: string;
@@ -67,6 +69,24 @@ defineOptions({
 const page = usePage();
 const teamSlug = computed(
     () => (page.props.currentTeam as Team | null)?.slug ?? '',
+);
+const posPermissions = computed<string[]>(() => {
+    const value = page.props.posPermissions;
+    return Array.isArray(value) ? (value as string[]) : [];
+});
+const hasQuotationPermission = (permission: string): boolean =>
+    posPermissions.value.includes(permission);
+const canCreateQuotation = computed(() =>
+    posPermissions.value.includes('direct_sell.access'),
+);
+const canUpdateQuotation = computed(() =>
+    hasQuotationPermission('quotation.update'),
+);
+const canDeleteQuotation = computed(() =>
+    hasQuotationPermission('quotation.delete'),
+);
+const showActionColumn = computed(
+    () => canUpdateQuotation.value || canDeleteQuotation.value,
 );
 
 const search = ref(props.filters.search ?? '');
@@ -208,7 +228,7 @@ function sortIndicator(sortKey: string | null): string {
                     Saved quotations (not finalized as sales).
                 </p>
             </div>
-            <Button as-child>
+            <Button v-if="canCreateQuotation" as-child>
                 <Link :href="salesQuotationsRoutes.create.url(teamSlug)">
                     <Plus class="mr-1 size-4" />
                     Add quotation
@@ -252,6 +272,12 @@ function sortIndicator(sortKey: string | null): string {
                 <thead>
                     <tr class="border-b border-border">
                         <th
+                            v-if="showActionColumn"
+                            class="bg-muted/40 px-3 py-2 text-right font-medium w-12"
+                        >
+                            Actions
+                        </th>
+                        <th
                             v-for="col in visibleColumns"
                             :key="col.id"
                             class="bg-muted/40 px-3 py-2 text-left font-medium"
@@ -278,6 +304,13 @@ function sortIndicator(sortKey: string | null): string {
                         :key="row.id"
                         class="border-border/80 hover:bg-muted/20 border-b"
                     >
+                        <td v-if="showActionColumn" class="px-1 py-2 text-right">
+                            <SaleRowActions
+                                :row="row"
+                                :team-slug="teamSlug"
+                                :customers="customers"
+                            />
+                        </td>
                         <td
                             v-for="col in visibleColumns"
                             :key="col.id"
@@ -288,11 +321,12 @@ function sortIndicator(sortKey: string | null): string {
                     </tr>
                     <tr v-if="!(sales?.data?.length)">
                         <td
-                            :colspan="visibleColumns.length"
+                            :colspan="visibleColumns.length + (showActionColumn ? 1 : 0)"
                             class="text-muted-foreground px-3 py-8 text-center"
                         >
                             No quotations yet.
                             <Button
+                                v-if="canCreateQuotation"
                                 as-child
                                 variant="link"
                                 class="ml-1 h-auto p-0"
