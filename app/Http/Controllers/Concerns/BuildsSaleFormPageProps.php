@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Concerns;
 use App\Models\BusinessLocation;
 use App\Models\Customer;
 use App\Models\PaymentAccount;
-use App\Models\RestaurantTable;
 use App\Models\SellingPriceGroup;
 use App\Models\TaxRate;
 use App\Models\Team;
@@ -67,12 +66,6 @@ trait BuildsSaleFormPageProps
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $restaurantTables = RestaurantTable::query()
-            ->forTeam($current_team)
-            ->orderBy('business_location_id')
-            ->orderBy('name')
-            ->get(['id', 'name', 'business_location_id']);
-
         return [
             'customers' => $customerRows,
             'walkInCustomerId' => $walkIn->id,
@@ -87,7 +80,6 @@ trait BuildsSaleFormPageProps
             ]),
             'customerGroups' => $groups,
             'sellingPriceGroups' => $sellingPriceGroups,
-            'restaurantTables' => $restaurantTables,
             'isDraftSale' => $isDraftSale,
             'isQuotationSale' => $isQuotationSale && ! $isDraftSale,
         ];

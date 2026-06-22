@@ -13,7 +13,6 @@ import type { Team } from '@/types';
 type PosRole = {
     id: number;
     name: string;
-    is_service_staff: boolean;
     is_locked: boolean;
     permissions: string[] | null;
     radio_options: Record<string, string> | null;
@@ -47,7 +46,6 @@ const teamSlug = computed(
 
 const form = useForm({
     name: props.posRole.name,
-    is_service_staff: props.posRole.is_service_staff,
     permissions: [...(props.defaults.permissions ?? [])],
     radio_options: { ...props.defaults.radio_options },
 });

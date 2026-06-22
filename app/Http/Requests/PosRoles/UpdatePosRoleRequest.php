@@ -24,7 +24,6 @@ class UpdatePosRoleRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'is_service_staff' => ['sometimes', 'boolean'],
             'permissions' => ['sometimes', 'array'],
             'permissions.*' => ['string', 'max:255', Rule::in($checkboxKeys)],
             'radio_options' => ['sometimes', 'array'],

@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'customer_id',
     'business_location_id',
     'selling_price_group_id',
-    'restaurant_table_id',
     'invoice_no',
     'transaction_date',
     'status',
@@ -100,14 +99,6 @@ class Sale extends Model
     public function sellingPriceGroup(): BelongsTo
     {
         return $this->belongsTo(SellingPriceGroup::class);
-    }
-
-    /**
-     * @return BelongsTo<RestaurantTable, $this>
-     */
-    public function restaurantTable(): BelongsTo
-    {
-        return $this->belongsTo(RestaurantTable::class);
     }
 
     /**

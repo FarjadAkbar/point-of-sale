@@ -15,7 +15,6 @@ class DatabaseSeeder extends Seeder
             BrandUnitWarrantyPermissionSeeder::class,
             ProductPermissionSeeder::class,
             SettingsPermissionSeeder::class,
-            BookingPermissionSeeder::class,
             PurchasePermissionSeeder::class,
             CustomerPermissionSeeder::class,
             SupplierRoleUserPermissionSeeder::class,
@@ -30,7 +29,7 @@ class DatabaseSeeder extends Seeder
             TaxRatePermissionSeeder::class,
             ReportPermissionSeeder::class,
             ExpensePermissionSeeder::class,
-            RestaurantPosUsersSeeder::class,
+            DemoPosUsersSeeder::class,
         ]);
     }
 }

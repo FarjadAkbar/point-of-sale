@@ -56,14 +56,6 @@ class BusinessLocation extends Model
     }
 
     /**
-     * @return HasMany<RestaurantTable, $this>
-     */
-    public function restaurantTables(): HasMany
-    {
-        return $this->hasMany(RestaurantTable::class);
-    }
-
-    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */

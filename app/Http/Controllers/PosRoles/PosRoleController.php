@@ -48,7 +48,6 @@ class PosRoleController extends Controller
         $data = $request->validated();
         $current_team->posRoles()->create([
             'name' => $data['name'],
-            'is_service_staff' => $data['is_service_staff'] ?? false,
             'permissions' => $data['permissions'] ?? [],
             'radio_options' => $data['radio_options'] ?? PosPermissionCatalog::defaultRadioSelections(),
             'is_locked' => false,
@@ -84,7 +83,6 @@ class PosRoleController extends Controller
         $data = $request->validated();
         $pos_role->update([
             'name' => $data['name'],
-            'is_service_staff' => $data['is_service_staff'] ?? false,
             'permissions' => $data['permissions'] ?? [],
             'radio_options' => $data['radio_options'] ?? PosPermissionCatalog::defaultRadioSelections(),
         ]);

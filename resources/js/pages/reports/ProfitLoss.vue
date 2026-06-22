@@ -27,7 +27,6 @@ const props = defineProps<{
     profitByDate: Row[];
     profitByCustomer: Row[];
     profitByDay: Row[];
-    profitByServiceStaff: Row[];
 }>();
 
 defineOptions({
@@ -77,7 +76,6 @@ const activeTab = ref<
     | 'date'
     | 'customer'
     | 'day'
-    | 'service_staff'
 >('products');
 
 const tabDefs = [
@@ -89,7 +87,6 @@ const tabDefs = [
     { id: 'date' as const, label: 'Profit by date' },
     { id: 'customer' as const, label: 'Profit by customer' },
     { id: 'day' as const, label: 'Profit by day' },
-    { id: 'service_staff' as const, label: 'Profit by service staff' },
 ];
 
 function currency(n: string | number) {
@@ -149,8 +146,6 @@ const currentRows = computed(() => {
             return { rows: props.profitByCustomer, col: 'Customer' };
         case 'day':
             return { rows: props.profitByDay, col: 'Day' };
-        case 'service_staff':
-            return { rows: props.profitByServiceStaff, col: 'Service staff' };
         default:
             return { rows: [], col: '' };
     }

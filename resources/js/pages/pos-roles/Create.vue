@@ -37,7 +37,6 @@ const teamSlug = computed(
 
 const form = useForm({
     name: '',
-    is_service_staff: false,
     permissions: [...props.defaults.permissions],
     radio_options: { ...props.defaults.radio_options },
 });

@@ -50,7 +50,6 @@ class ProfitLossController extends Controller
             'profitByDate' => $report['profit_by_date'],
             'profitByCustomer' => $report['profit_by_customer'],
             'profitByDay' => $report['profit_by_day'],
-            'profitByServiceStaff' => $report['profit_by_service_staff'],
         ]);
     }
 

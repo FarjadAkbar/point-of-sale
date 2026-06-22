@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Bookings\BookingController;
 use App\Http\Controllers\Brands\BrandController;
 use App\Http\Controllers\BusinessLocations\BusinessLocationController;
 use App\Http\Controllers\CustomerGroups\CustomerGroupController;
@@ -8,9 +7,6 @@ use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Expenses\ExpenseCategoryController;
 use App\Http\Controllers\Expenses\ExpenseController;
-use App\Http\Controllers\Kitchen\KitchenController;
-use App\Http\Controllers\ModifierSets\ModifierSetController;
-use App\Http\Controllers\Orders\OrderController;
 use App\Http\Controllers\PaymentAccounts\AccountTypeController;
 use App\Http\Controllers\PaymentAccounts\PaymentAccountController;
 use App\Http\Controllers\Pos\CashRegisterController;
@@ -32,10 +28,8 @@ use App\Http\Controllers\Reports\PurchaseSellController;
 use App\Http\Controllers\Reports\RegisterReportController;
 use App\Http\Controllers\Reports\SalesRepresentativeReportController;
 use App\Http\Controllers\Reports\SellPaymentReportController;
-use App\Http\Controllers\Reports\ServiceStaffReportController;
 use App\Http\Controllers\Reports\StockAdjustmentReportController;
 use App\Http\Controllers\Reports\StockReportController;
-use App\Http\Controllers\Reports\TableReportController;
 use App\Http\Controllers\Reports\TaxReportController;
 use App\Http\Controllers\Reports\TrendingProductsReportController;
 use App\Http\Controllers\Sales\DiscountController;
@@ -50,7 +44,6 @@ use App\Http\Controllers\Settings\ReceiptPrinterController;
 use App\Http\Controllers\StockAdjustments\StockAdjustmentController;
 use App\Http\Controllers\StockTransfers\StockTransferController;
 use App\Http\Controllers\Suppliers\SupplierController;
-use App\Http\Controllers\Tables\RestaurantTableController;
 use App\Http\Controllers\Taxes\TaxesController;
 use App\Http\Controllers\Taxes\TaxGroupController;
 use App\Http\Controllers\Taxes\TaxRateController;
@@ -86,14 +79,6 @@ Route::prefix('{current_team}')
         Route::get('dashboard', DashboardController::class)
             ->middleware('pos.permission:dashboard.data')
             ->name('dashboard');
-
-        Route::get('kitchen', [KitchenController::class, 'index'])
-            ->middleware('pos.permission:kitchen.access')
-            ->name('kitchen.index');
-
-        Route::get('order', [OrderController::class, 'index'])
-            ->middleware('pos.permission:order.access')
-            ->name('order.index');
 
         Route::get('suppliers/export/{format}', [SupplierController::class, 'exportFile'])
             ->middleware('pos.permission:supplier.view,supplier.view_own')
@@ -280,14 +265,6 @@ Route::prefix('{current_team}')
             ->middleware('pos.permission:sell.create,view_cash_register')
             ->name('pos.index');
 
-        Route::resource('booking', BookingController::class)
-            ->middleware('pos.permission:crud_all_bookings,crud_own_bookings')
-            ->except([
-            'show',
-            'create',
-            'edit',
-        ]);
-
         Route::get('sales/drafts', [SaleController::class, 'draftsIndex'])
             ->middleware('pos.permission:draft.view_all,draft.view_own')
             ->name('sales.drafts.index');
@@ -371,19 +348,6 @@ Route::prefix('{current_team}')
             'create',
             'edit',
         ]);
-
-        Route::prefix('settings')->group(function () {
-            Route::resource('tables', RestaurantTableController::class)
-                ->middleware('pos.permission:access_tables')
-                ->except(['show', 'create', 'edit'])
-                ->parameters(['tables' => 'restaurant_table'])
-                ->names('settings.tables');
-
-            Route::resource('modifiers', ModifierSetController::class)
-                ->except(['show', 'create', 'edit'])
-                ->parameters(['modifiers' => 'modifier_set'])
-                ->names('settings.modifiers');
-        });
 
         Route::resource('tax-rates', TaxRateController::class)
             ->middleware('pos.permission:tax_rate.create,tax_rate.update,tax_rate.delete')
@@ -516,12 +480,6 @@ Route::prefix('{current_team}')
         Route::get('reports/sales-representative', [SalesRepresentativeReportController::class, 'salesRepresentativeReport'])
             ->middleware('pos.permission:sales_representative.view')
             ->name('reports.sales-representative');
-
-        Route::get('reports/table-report', [TableReportController::class, 'tableReport'])
-            ->name('reports.table-report');
-
-        Route::get('reports/service-staff', [ServiceStaffReportController::class, 'serviceStaffReport'])
-            ->name('reports.service-staff');
 
         Route::get('reports/activity-log', [ActivityLogReportController::class, 'activityLog'])
             ->name('reports.activity-log');

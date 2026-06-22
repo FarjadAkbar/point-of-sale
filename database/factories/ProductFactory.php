@@ -33,7 +33,6 @@ class ProductFactory extends Factory
             'enable_imei_serial' => false,
             'not_for_selling' => false,
             'weight' => null,
-            'preparation_time_minutes' => null,
             'application_tax' => 'none',
             'selling_price_tax_type' => 'exclusive',
             'product_type' => 'single',

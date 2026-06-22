@@ -27,13 +27,6 @@ class StoreTeamUserRequest extends FormRequest
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'username' => ['nullable', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
-            'is_enable_service_staff_pin' => ['sometimes', 'boolean'],
-            'service_staff_pin' => [
-                'nullable',
-                Rule::requiredIf(fn () => $this->boolean('is_enable_service_staff_pin')),
-                'string',
-                'min:4',
-            ],
             'allow_login' => ['sometimes', 'boolean'],
             'pos_role_id' => [
                 'required',

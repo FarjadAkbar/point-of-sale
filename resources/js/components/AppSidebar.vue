@@ -5,8 +5,6 @@ import {
     ArrowLeftRight,
     BarChart3,
     Bell,
-    Calendar,
-    ChefHat,
     FileText,
     Barcode,
     Building2,
@@ -29,12 +27,10 @@ import {
     ScanLine,
     Settings,
     Shield,
-    ShoppingBag,
     ShoppingCart,
     SlidersHorizontal,
     SquarePlus,
     Store,
-    Table,
     Undo2,
     Tags,
     UserCircle,
@@ -62,15 +58,12 @@ import {
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
 import barcodeSettingsRoutes from '@/routes/barcode-settings';
-import bookingRoutes from '@/routes/booking';
 import brands from '@/routes/brands';
 import businessLocations from '@/routes/business-locations';
 import customerGroups from '@/routes/customer-groups';
 import customers from '@/routes/customers';
 import expenseCategories from '@/routes/expense-categories';
 import expenses from '@/routes/expenses';
-import kitchenRoutes from '@/routes/kitchen';
-import orderRoutes from '@/routes/order';
 import paymentAccounts from '@/routes/payment-accounts';
 import paymentSettingsRoutes from '@/routes/payment-settings';
 import posRoutes from '@/routes/pos';
@@ -86,8 +79,6 @@ import salesDraftRoutes from '@/routes/sales/drafts';
 import salesQuotationsRoutes from '@/routes/sales/quotations';
 import salesCommissionAgentRoutes from '@/routes/sales-commission-agents';
 import sellingPriceGroups from '@/routes/selling-price-groups';
-import settingsModifiersRoutes from '@/routes/settings/modifiers';
-import settingsTableRoutes from '@/routes/settings/tables';
 import stockAdjustments from '@/routes/stock-adjustments';
 import stockTransfers from '@/routes/stock-transfers';
 import suppliers from '@/routes/suppliers';
@@ -116,34 +107,6 @@ const hasAnyPosPermission = (permissions: string[]): boolean => {
 
 const dashboardUrl = computed(() =>
     page.props.currentTeam ? dashboard(page.props.currentTeam.slug).url : '/',
-);
-
-const bookingUrl = computed(() =>
-    page.props.currentTeam
-        ? bookingRoutes.index.url(page.props.currentTeam.slug)
-        : '/',
-);
-
-const kitchenUrl = computed(() =>
-    page.props.currentTeam
-        ? kitchenRoutes.index.url(page.props.currentTeam.slug)
-        : '/',
-);
-
-const orderUrl = computed(() =>
-    page.props.currentTeam
-        ? orderRoutes.index.url(page.props.currentTeam.slug)
-        : '/',
-);
-
-const orderNavOpen = ref(false);
-
-watch(
-    () => [page.url, kitchenUrl.value, orderUrl.value] as const,
-    () => {
-        orderNavOpen.value = isCurrentUrl(kitchenUrl.value) || isCurrentUrl(orderUrl.value);
-    },
-    { immediate: true },
 );
 
 const suppliersUrl = computed(() =>
@@ -197,18 +160,6 @@ const sellingPriceGroupsUrl = computed(() =>
 const variationTemplatesUrl = computed(() =>
     page.props.currentTeam
         ? variationTemplates.index.url(page.props.currentTeam.slug)
-        : '/',
-);
-
-const modifierSetsUrl = computed(() =>
-    page.props.currentTeam
-        ? settingsModifiersRoutes.index.url(page.props.currentTeam.slug)
-        : '/',
-);
-
-const settingsTablesUrl = computed(() =>
-    page.props.currentTeam
-        ? settingsTableRoutes.index.url(page.props.currentTeam.slug)
         : '/',
 );
 
@@ -488,14 +439,6 @@ const salesRepresentativeReportUrl = computed(() =>
     page.props.currentTeam ? reportRoutes.salesRepresentative.url(page.props.currentTeam.slug) : '/',
 );
 
-const tableReportUrl = computed(() =>
-    page.props.currentTeam ? reportRoutes.tableReport.url(page.props.currentTeam.slug) : '/',
-);
-
-const serviceStaffReportUrl = computed(() =>
-    page.props.currentTeam ? reportRoutes.serviceStaff.url(page.props.currentTeam.slug) : '/',
-);
-
 const activityLogReportUrl = computed(() =>
     page.props.currentTeam ? reportRoutes.activityLog.url(page.props.currentTeam.slug) : '/',
 );
@@ -583,17 +526,13 @@ watch(
             receiptPrinterUrl.value,
             barcodeSettingsUrl.value,
             businessLocationsUrl.value,
-            modifierSetsUrl.value,
-            settingsTablesUrl.value,
         ] as const,
     () => {
         settingsOpen.value =
             isCurrentUrl(taxesUrl.value) ||
             isCurrentUrl(receiptPrinterUrl.value) ||
             isCurrentUrl(barcodeSettingsUrl.value) ||
-            isCurrentUrl(businessLocationsUrl.value) ||
-            isCurrentUrl(modifierSetsUrl.value) ||
-            isCurrentUrl(settingsTablesUrl.value);
+            isCurrentUrl(businessLocationsUrl.value);
     },
     { immediate: true },
 );
@@ -725,8 +664,6 @@ watch(
             expenseReportUrl.value,
             registerReportUrl.value,
             salesRepresentativeReportUrl.value,
-            tableReportUrl.value,
-            serviceStaffReportUrl.value,
             activityLogReportUrl.value,
         ] as const,
     () => {
@@ -746,8 +683,6 @@ watch(
             isCurrentUrl(expenseReportUrl.value) ||
             isCurrentUrl(registerReportUrl.value) ||
             isCurrentUrl(salesRepresentativeReportUrl.value) ||
-            isCurrentUrl(tableReportUrl.value) ||
-            isCurrentUrl(serviceStaffReportUrl.value) ||
             isCurrentUrl(activityLogReportUrl.value);
     },
     { immediate: true },
@@ -1891,8 +1826,6 @@ watch(
                                         isCurrentUrl(expenseReportUrl) ||
                                         isCurrentUrl(registerReportUrl) ||
                                         isCurrentUrl(salesRepresentativeReportUrl) ||
-                                        isCurrentUrl(tableReportUrl) ||
-                                        isCurrentUrl(serviceStaffReportUrl) ||
                                         isCurrentUrl(activityLogReportUrl)
                                     "
                                     tooltip="Reports"
@@ -2077,28 +2010,6 @@ watch(
                                         <SidebarMenuSubButton
                                             as-child
                                             size="sm"
-                                            :is-active="isCurrentUrl(tableReportUrl)"
-                                        >
-                                            <Link :href="tableReportUrl">
-                                                <span>Table report</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="isCurrentUrl(serviceStaffReportUrl)"
-                                        >
-                                            <Link :href="serviceStaffReportUrl">
-                                                <span>Service staff report</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
                                             :is-active="isCurrentUrl(activityLogReportUrl)"
                                         >
                                             <Link :href="activityLogReportUrl">
@@ -2111,77 +2022,6 @@ watch(
                         </SidebarMenuItem>
                     </Collapsible>
 
-                    <SidebarMenuItem
-                        v-if="
-                            hasAnyPosPermission([
-                                'crud_all_bookings',
-                                'crud_own_bookings',
-                            ])
-                        "
-                    >
-                        <SidebarMenuButton
-                            as-child
-                            :is-active="isCurrentUrl(bookingUrl)"
-                            tooltip="Booking"
-                        >
-                            <Link :href="bookingUrl">
-                                <Calendar />
-                                <span>Booking</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <Collapsible
-                        v-if="hasAnyPosPermission(['kitchen.access', 'order.access'])"
-                        v-model:open="orderNavOpen"
-                        class="group/collapsible"
-                    >
-                        <SidebarMenuItem>
-                            <CollapsibleTrigger as-child>
-                                <SidebarMenuButton
-                                    :is-active="isCurrentUrl(kitchenUrl) || isCurrentUrl(orderUrl)"
-                                    tooltip="Order"
-                                >
-                                    <ListOrdered />
-                                    <span>Order</span>
-                                    <ChevronRight
-                                        class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
-                                    />
-                                </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                                <SidebarMenuSub>
-                                    <SidebarMenuSubItem
-                                        v-if="hasAnyPosPermission(['kitchen.access'])"
-                                    >
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="isCurrentUrl(kitchenUrl)"
-                                        >
-                                            <Link :href="kitchenUrl">
-                                                <ChefHat />
-                                                <span>Kitchen</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem
-                                        v-if="hasAnyPosPermission(['order.access'])"
-                                    >
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="isCurrentUrl(orderUrl)"
-                                        >
-                                            <Link :href="orderUrl">
-                                                <ShoppingBag />
-                                                <span>Orders</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                </SidebarMenuSub>
-                            </CollapsibleContent>
-                        </SidebarMenuItem>
-                    </Collapsible>
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             disabled
@@ -2199,7 +2039,6 @@ watch(
                                 'barcode_settings.access',
                                 'business_settings.access',
                                 'access_printers',
-                                'access_tables',
                             ])
                         "
                         v-model:open="settingsOpen"
@@ -2212,9 +2051,7 @@ watch(
                                         isCurrentUrl(taxesUrl) ||
                                         isCurrentUrl(receiptPrinterUrl) ||
                                         isCurrentUrl(barcodeSettingsUrl) ||
-                                        isCurrentUrl(businessLocationsUrl) ||
-                                        isCurrentUrl(modifierSetsUrl) ||
-                                        isCurrentUrl(settingsTablesUrl)
+                                        isCurrentUrl(businessLocationsUrl)
                                     "
                                     tooltip="Settings"
                                 >
@@ -2278,34 +2115,6 @@ watch(
                                             <Link :href="businessLocationsUrl">
                                                 <MapPin />
                                                 <span>Business location</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(modifierSetsUrl)
-                                            "
-                                        >
-                                            <Link :href="modifierSetsUrl">
-                                                <SlidersHorizontal />
-                                                <span>Modifiers</span>
-                                            </Link>
-                                        </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                    <SidebarMenuSubItem>
-                                        <SidebarMenuSubButton
-                                            as-child
-                                            size="sm"
-                                            :is-active="
-                                                isCurrentUrl(settingsTablesUrl)
-                                            "
-                                        >
-                                            <Link :href="settingsTablesUrl">
-                                                <Table />
-                                                <span>Tables</span>
                                             </Link>
                                         </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>

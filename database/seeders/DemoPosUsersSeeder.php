@@ -11,7 +11,7 @@ use App\Support\PosPermissionCatalog;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-class RestaurantPosUsersSeeder extends Seeder
+class DemoPosUsersSeeder extends Seeder
 {
     public function run(): void
     {
@@ -19,16 +19,23 @@ class RestaurantPosUsersSeeder extends Seeder
 
         if (! $team) {
             $team = Team::query()->create([
-                'name' => 'Restaurant POS Team',
+                'name' => 'Demo POS Team',
                 'is_personal' => false,
             ]);
         }
 
         $defaultRadios = PosPermissionCatalog::defaultRadioSelections();
 
+        $adminRole = $this->upsertPosRole(
+            $team,
+            'Demo - Admin',
+            PosPermissionCatalog::allCheckboxKeys(),
+            $defaultRadios,
+        );
+
         $managerRole = $this->upsertPosRole(
             $team,
-            'Demo - Restaurant Manager',
+            'Demo - Manager',
             [
                 'dashboard.data',
                 'direct_sell.access',
@@ -39,6 +46,18 @@ class RestaurantPosUsersSeeder extends Seeder
                 'product.view',
                 'product.create',
                 'product.update',
+                'brand.view',
+                'brand.create',
+                'brand.update',
+                'brand.delete',
+                'unit.view',
+                'unit.create',
+                'unit.update',
+                'unit.delete',
+                'warranty.view',
+                'warranty.create',
+                'warranty.update',
+                'warranty.delete',
                 'customer.view',
                 'supplier.view',
                 'all_expense.access',
@@ -57,7 +76,6 @@ class RestaurantPosUsersSeeder extends Seeder
                 'close_cash_register',
             ],
             $defaultRadios,
-            false,
         );
 
         $cashierRole = $this->upsertPosRole(
@@ -76,22 +94,6 @@ class RestaurantPosUsersSeeder extends Seeder
                 'close_cash_register',
             ],
             $defaultRadios,
-            false,
-        );
-
-        $waiterRole = $this->upsertPosRole(
-            $team,
-            'Demo - Waiter',
-            [
-                'dashboard.data',
-                'direct_sell.access',
-                'add_sale_payment',
-                'customer.view_own',
-            ],
-            array_merge($defaultRadios, [
-                'sell_view' => 'view_own_sell_only',
-            ]),
-            true,
         );
 
         $inventoryRole = $this->upsertPosRole(
@@ -105,8 +107,17 @@ class RestaurantPosUsersSeeder extends Seeder
                 'product.opening_stock',
                 'view_purchase_price',
                 'brand.view',
+                'brand.create',
+                'brand.update',
+                'brand.delete',
                 'unit.view',
+                'unit.create',
+                'unit.update',
+                'unit.delete',
                 'warranty.view',
+                'warranty.create',
+                'warranty.update',
+                'warranty.delete',
                 'purchase.view',
                 'purchase.create',
                 'purchase.update',
@@ -118,42 +129,34 @@ class RestaurantPosUsersSeeder extends Seeder
                 'view_product_stock_value',
             ],
             $defaultRadios,
-            false,
         );
 
         $users = [
             [
                 'name' => 'Admin User',
-                'email' => 'admin@restaurantpos.test',
-                'username' => 'restaurant_admin',
-                'pos_role_id' => $managerRole->id,
+                'email' => 'admin@demopos.test',
+                'username' => 'demo_admin',
+                'pos_role_id' => $adminRole->id,
                 'team_role' => TeamRole::Admin,
             ],
             [
-                'name' => 'Restaurant Manager',
-                'email' => 'manager@restaurantpos.test',
-                'username' => 'restaurant_manager',
+                'name' => 'Manager User',
+                'email' => 'manager@demopos.test',
+                'username' => 'demo_manager',
                 'pos_role_id' => $managerRole->id,
                 'team_role' => TeamRole::Admin,
             ],
             [
                 'name' => 'Cashier User',
-                'email' => 'cashier@restaurantpos.test',
-                'username' => 'restaurant_cashier',
+                'email' => 'cashier@demopos.test',
+                'username' => 'demo_cashier',
                 'pos_role_id' => $cashierRole->id,
                 'team_role' => TeamRole::Member,
             ],
             [
-                'name' => 'Waiter User',
-                'email' => 'waiter@restaurantpos.test',
-                'username' => 'restaurant_waiter',
-                'pos_role_id' => $waiterRole->id,
-                'team_role' => TeamRole::Member,
-            ],
-            [
                 'name' => 'Inventory User',
-                'email' => 'inventory@restaurantpos.test',
-                'username' => 'restaurant_inventory',
+                'email' => 'inventory@demopos.test',
+                'username' => 'demo_inventory',
                 'pos_role_id' => $inventoryRole->id,
                 'team_role' => TeamRole::Member,
             ],
@@ -194,7 +197,6 @@ class RestaurantPosUsersSeeder extends Seeder
         string $name,
         array $permissions,
         array $radioOptions,
-        bool $isServiceStaff
     ): PosRole {
         return PosRole::query()->updateOrCreate(
             [
@@ -202,7 +204,6 @@ class RestaurantPosUsersSeeder extends Seeder
                 'name' => $name,
             ],
             [
-                'is_service_staff' => $isServiceStaff,
                 'permissions' => array_values(array_unique($permissions)),
                 'radio_options' => $radioOptions,
                 'is_locked' => false,

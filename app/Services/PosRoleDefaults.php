@@ -21,7 +21,6 @@ final class PosRoleDefaults
         PosRole::query()->create([
             'team_id' => $team->id,
             'name' => 'Admin',
-            'is_service_staff' => false,
             'permissions' => $allChecks,
             'radio_options' => $radios,
             'is_locked' => true,
@@ -33,20 +32,7 @@ final class PosRoleDefaults
         PosRole::query()->create([
             'team_id' => $team->id,
             'name' => 'Cashier',
-            'is_service_staff' => false,
             'permissions' => $cashierChecks !== [] ? $cashierChecks : ['sell.create', 'sell.view', 'dashboard.data'],
-            'radio_options' => $radios,
-            'is_locked' => false,
-        ]);
-
-        PosRole::query()->create([
-            'team_id' => $team->id,
-            'name' => 'Waiter',
-            'is_service_staff' => true,
-            'permissions' => array_values(array_unique(array_merge(
-                ['access_tables', 'sell.create', 'sell.view', 'dashboard.data'],
-                array_filter($allChecks, fn (string $k) => str_starts_with($k, 'sell.')),
-            ))),
             'radio_options' => $radios,
             'is_locked' => false,
         ]);

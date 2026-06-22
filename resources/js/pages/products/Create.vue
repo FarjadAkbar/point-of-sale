@@ -102,7 +102,6 @@ type ProductEditPayload = {
     enable_imei_serial: boolean;
     not_for_selling: boolean;
     weight: string;
-    preparation_time_minutes: string;
     application_tax: string;
     selling_price_tax_type: string;
     product_type: string;
@@ -303,7 +302,6 @@ const form = useForm({
     enable_imei_serial: false,
     not_for_selling: false,
     weight: '',
-    preparation_time_minutes: '',
     application_tax: 'none',
     selling_price_tax_type: 'exclusive',
     product_type: 'single',
@@ -452,7 +450,6 @@ function hydrateFromProduct(p: ProductEditPayload) {
     form.enable_imei_serial = p.enable_imei_serial;
     form.not_for_selling = p.not_for_selling;
     form.weight = p.weight;
-    form.preparation_time_minutes = p.preparation_time_minutes;
     form.application_tax = p.application_tax || 'none';
     form.selling_price_tax_type = p.selling_price_tax_type;
     form.product_type = p.product_type;
@@ -755,7 +752,8 @@ function submit() {
     form.category_id = categoryId.value;
     form.subcategory_id = subcategoryId.value || '';
 
-    const opts = { forceFormData: true };
+    const hasUploads = Boolean(form.product_image || form.product_brochure);
+    const uploadOpts = hasUploads ? { forceFormData: true as const } : {};
 
     const transformPayload = (data: Record<string, unknown>) => {
         const out: Record<string, unknown> = { ...data };
@@ -805,19 +803,29 @@ function submit() {
     };
 
     if (isEditing.value && props.product) {
-        form
-            .transform(transformPayload)
-            .put(
-                productRoutes.update.url({
-                    current_team: teamSlug.value,
-                    product: props.product.id,
-                }),
-                opts,
-            );
+        const url = productRoutes.update.url({
+            current_team: teamSlug.value,
+            product: props.product.id,
+        });
+
+        if (hasUploads) {
+            form
+                .transform((data) => {
+                    const out = transformPayload(data) as Record<string, unknown>;
+                    out._method = 'put';
+
+                    return out;
+                })
+                .post(url, uploadOpts);
+        } else {
+            form.transform(transformPayload).put(url);
+        }
     } else {
         form
             .transform(transformPayload)
-            .post(productRoutes.store.url(teamSlug.value), opts);
+            .post(productRoutes.store.url(teamSlug.value), {
+                forceFormData: true,
+            });
     }
 }
 </script>
@@ -1092,14 +1100,6 @@ function submit() {
                         id="p-weight"
                         v-model="form.weight"
                         inputmode="decimal"
-                    />
-                </div>
-                <div class="grid gap-2">
-                    <Label for="p-prep">Preparation time (minutes)</Label>
-                    <Input
-                        id="p-prep"
-                        v-model="form.preparation_time_minutes"
-                        inputmode="numeric"
                     />
                 </div>
                 <div class="grid gap-2">

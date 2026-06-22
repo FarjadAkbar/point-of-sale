@@ -25,6 +25,12 @@ class StoreProductRequest extends FormRequest
             $this->merge(['barcode_type' => null]);
         }
 
+        foreach (['unit_id', 'brand_id', 'category_id', 'subcategory_id'] as $key) {
+            if ($this->input($key) === '' || $this->input($key) === null) {
+                $this->merge([$key => null]);
+            }
+        }
+
         foreach (['combo_lines', 'variation_matrix', 'business_location_ids', 'opening_stocks'] as $key) {
             $v = $this->input($key);
             if (is_string($v) && $v !== '') {
@@ -129,7 +135,6 @@ class StoreProductRequest extends FormRequest
             'enable_imei_serial' => ['boolean'],
             'not_for_selling' => ['boolean'],
             'weight' => ['nullable', 'numeric', 'min:0'],
-            'preparation_time_minutes' => ['nullable', 'integer', 'min:0', 'max:525600'],
             'application_tax' => ['nullable', 'string', Rule::in($taxIds)],
             'selling_price_tax_type' => ['required', 'string', Rule::in(['inclusive', 'exclusive'])],
             'product_type' => ['required', 'string', Rule::in(['single', 'variation', 'combo'])],

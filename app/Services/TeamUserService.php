@@ -7,7 +7,6 @@ use App\Models\Membership;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 final class TeamUserService
@@ -83,15 +82,8 @@ final class TeamUserService
      */
     private function buildSettings(array $data, array $existing = []): array
     {
-        $pin = $data['service_staff_pin'] ?? null;
-        $pinHash = $pin
-            ? Hash::make($pin)
-            : ($existing['service_staff_pin_hash'] ?? null);
-
         $settings = [
             'prefix' => $data['prefix'] ?? null,
-            'is_enable_service_staff_pin' => (bool) ($data['is_enable_service_staff_pin'] ?? false),
-            'service_staff_pin_hash' => $pinHash,
             'allow_login' => (bool) ($data['allow_login'] ?? true),
             'access_all_locations' => (bool) ($data['access_all_locations'] ?? true),
             'location_ids' => $data['location_ids'] ?? [],
@@ -100,10 +92,6 @@ final class TeamUserService
             'selected_contacts' => (bool) ($data['selected_contacts'] ?? false),
             'profile' => $data['profile'] ?? [],
         ];
-
-        if (empty($settings['service_staff_pin_hash'])) {
-            unset($settings['service_staff_pin_hash']);
-        }
 
         return $settings;
     }

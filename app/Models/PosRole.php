@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'team_id',
     'name',
-    'is_service_staff',
     'permissions',
     'radio_options',
     'is_locked',
@@ -39,7 +38,6 @@ class PosRole extends Model
     protected function casts(): array
     {
         return [
-            'is_service_staff' => 'boolean',
             'permissions' => 'array',
             'radio_options' => 'array',
             'is_locked' => 'boolean',

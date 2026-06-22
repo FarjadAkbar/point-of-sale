@@ -178,9 +178,6 @@ class ProductController extends Controller
             'enable_imei_serial' => (bool) $product->enable_imei_serial,
             'not_for_selling' => (bool) $product->not_for_selling,
             'weight' => $decimal($product->weight),
-            'preparation_time_minutes' => $product->preparation_time_minutes !== null
-                ? (string) $product->preparation_time_minutes
-                : '',
             'application_tax' => $product->application_tax ?? 'none',
             'selling_price_tax_type' => $product->selling_price_tax_type ?? 'exclusive',
             'product_type' => $product->product_type,

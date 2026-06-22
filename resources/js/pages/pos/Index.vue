@@ -15,17 +15,13 @@ import {
     ScanLine,
     Search,
     ShoppingCart,
-    Table2,
     Tags,
     Trash2,
-    UserRound,
-    UtensilsCrossed,
     Wallet,
 } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import StandardFormModal from '@/components/StandardFormModal.vue';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -104,7 +100,6 @@ const props = defineProps<{
     productCategories?: { id: number; name: string }[];
     brands?: { id: number; name: string }[];
     sellingPriceGroups?: { id: number; name: string }[];
-    restaurantTables?: { id: number; name: string; business_location_id: number }[];
     cashRegisterSession: {
         id: number;
         business_location_id: number;
@@ -168,15 +163,9 @@ const NONE = '__none__';
 /** Select sentinel for “all” category / brand filters */
 const FILTER_ALL = 'all';
 
-const authUserId = String(
-    (page.props.auth as { user?: { id: number } } | undefined)?.user?.id ?? '',
-);
-
 const form = useForm({
     business_location_id: '',
     selling_price_group_id: NONE,
-    restaurant_table_id: NONE,
-    service_staff_id: authUserId || NONE,
     customer_id:
         props.walkInCustomerId != null && props.walkInCustomerId > 0
             ? String(props.walkInCustomerId)
@@ -697,44 +686,8 @@ const editTaxOpen = ref(false);
 const editShippingOpen = ref(false);
 const editPackingOpen = ref(false);
 
-/** Mark sale for kitchen; stored as a line prefix on `sale_note` at submit. */
-const kitchenOrder = ref(false);
-
-function setKitchenOrder(v: boolean | 'indeterminate') {
-    kitchenOrder.value = v === true;
-}
-
 const sellingPriceGroupsList = computed(
     () => props.sellingPriceGroups ?? [],
-);
-
-const tablesForLocation = computed(() => {
-    const loc = form.business_location_id;
-
-    if (!loc) {
-        return [];
-    }
-
-    return (props.restaurantTables ?? []).filter(
-        (t) => String(t.business_location_id) === String(loc),
-    );
-});
-
-watch(
-    () => form.business_location_id,
-    () => {
-        const tid = form.restaurant_table_id;
-
-        if (!tid || tid === NONE) {
-            return;
-        }
-
-        const ok = tablesForLocation.value.some((t) => String(t.id) === String(tid));
-
-        if (!ok) {
-            form.restaurant_table_id = NONE;
-        }
-    },
 );
 
 const saleTaxAmount = computed(() => {
@@ -1026,13 +979,7 @@ function transformPayload(
         paymentBlock = { payment: JSON.stringify(pay) };
     }
 
-    const noteBody = (d.sale_note ?? '')
-        .replace(/^\[Kitchen order\]\s*\n?/i, '')
-        .trim();
-    const saleNoteMerged =
-        [kitchenOrder.value ? '[Kitchen order]' : null, noteBody || null]
-            .filter(Boolean)
-            .join('\n') || null;
+    const noteBody = (d.sale_note ?? '').trim();
 
     /* eslint-disable @typescript-eslint/no-unused-vars -- strip nested keys reshaped below */
     const {
@@ -1042,8 +989,6 @@ function transformPayload(
         payment: _pay,
         sale_note: _sn,
         selling_price_group_id: _spg,
-        restaurant_table_id: _rtid,
-        service_staff_id: _ssid,
         ...rest
     } = d;
     /* eslint-enable @typescript-eslint/no-unused-vars */
@@ -1057,14 +1002,6 @@ function transformPayload(
             !d.selling_price_group_id || d.selling_price_group_id === NONE
                 ? null
                 : Number(d.selling_price_group_id),
-        restaurant_table_id:
-            !d.restaurant_table_id || d.restaurant_table_id === NONE
-                ? null
-                : Number(d.restaurant_table_id),
-        service_staff_id:
-            !d.service_staff_id || d.service_staff_id === NONE
-                ? null
-                : Number(d.service_staff_id),
         invoice_no: d.invoice_no?.trim() || null,
         pay_term_number:
             d.pay_term_number === '' ? null : Number(d.pay_term_number),
@@ -1076,7 +1013,7 @@ function transformPayload(
         tax_rate_id:
             d.tax_rate_id === NONE ? null : Number(d.tax_rate_id),
         shipping_charges: Number(d.shipping_charges) || 0,
-        sale_note: saleNoteMerged,
+        sale_note: noteBody || null,
         lines: JSON.stringify(lines),
         additional_expenses: JSON.stringify(expenses),
         ...paymentBlock,
@@ -1098,8 +1035,6 @@ async function resetPosFormAfterSale() {
         form.customer_id = String(props.walkInCustomerId);
     }
 
-    form.service_staff_id = authUserId || NONE;
-    kitchenOrder.value = false;
     productSearch.value = '';
     searchDropdownHits.value = [];
     selectedCategoryId.value = null;
@@ -1225,14 +1160,11 @@ async function clearCart() {
     form.sale_note = '';
     form.invoice_no = '';
     form.selling_price_group_id = NONE;
-    form.restaurant_table_id = NONE;
-    form.service_staff_id = authUserId || NONE;
 
     if (props.walkInCustomerId != null && props.walkInCustomerId > 0) {
         form.customer_id = String(props.walkInCustomerId);
     }
 
-    kitchenOrder.value = false;
     productSearch.value = '';
     searchDropdownHits.value = [];
 
@@ -1599,9 +1531,9 @@ function tryAddProduct(p: ProductHit) {
                     </div>
                 </div>
                 <div
-                    class="border-border grid shrink-0 grid-cols-2 gap-1.5 border-b bg-background px-2 py-1.5 sm:grid-cols-4 sm:items-center"
+                    class="border-border flex shrink-0 items-center gap-1.5 border-b bg-background px-2 py-1.5"
                 >
-                    <div class="flex min-w-0 items-center gap-1">
+                    <div class="flex min-w-0 flex-1 items-center gap-1">
                         <Tags
                             class="text-muted-foreground size-3.5 shrink-0 sm:size-4"
                             aria-hidden="true"
@@ -1627,98 +1559,6 @@ function tryAddProduct(p: ProductHit) {
                                 </SelectItem>
                             </SelectContent>
                         </Select>
-                    </div>
-                    <div class="flex min-w-0 items-center gap-1">
-                        <Table2
-                            class="text-muted-foreground size-3.5 shrink-0 sm:size-4"
-                            aria-hidden="true"
-                        />
-                        <Select
-                            v-model="form.restaurant_table_id"
-                            class="min-w-0 flex-1"
-                            :disabled="!form.business_location_id"
-                        >
-                            <SelectTrigger
-                                class="h-8 w-full min-w-0 px-2 text-left text-[11px] sm:text-xs"
-                            >
-                                <SelectValue placeholder="Table" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem :value="NONE">No table</SelectItem>
-                                <SelectItem
-                                    v-for="t in tablesForLocation"
-                                    :key="t.id"
-                                    :value="String(t.id)"
-                                >
-                                    {{ t.name }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div class="flex min-w-0 items-center gap-1">
-                        <UserRound
-                            class="text-muted-foreground size-3.5 shrink-0 sm:size-4"
-                            aria-hidden="true"
-                        />
-                        <Select
-                            v-model="form.service_staff_id"
-                            class="min-w-0 flex-1"
-                            :disabled="!form.business_location_id"
-                        >
-                            <SelectTrigger
-                                class="h-8 w-full min-w-0 px-2 text-left text-[11px] sm:text-xs"
-                            >
-                                <SelectValue placeholder="Staff" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem :value="NONE">Any staff</SelectItem>
-                                <SelectItem
-                                    v-for="m in teamMembers"
-                                    :key="m.id"
-                                    :value="String(m.id)"
-                                >
-                                    {{ m.name }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div
-                        class="text-muted-foreground flex min-w-0 items-center gap-1.5 text-[11px] sm:text-xs"
-                    >
-                        <Checkbox
-                            id="pos-kitchen-order"
-                            :model-value="kitchenOrder"
-                            @update:model-value="setKitchenOrder"
-                        />
-                        <Label
-                            for="pos-kitchen-order"
-                            class="line-clamp-2 cursor-pointer font-normal"
-                            >Kitchen</Label
-                        >
-                        <TooltipProvider :delay-duration="200">
-                            <Tooltip>
-                                <TooltipTrigger as-child>
-                                    <button
-                                        type="button"
-                                        class="hover:text-foreground inline-flex shrink-0 rounded p-0.5"
-                                        aria-label="About kitchen order"
-                                    >
-                                        <Info class="size-3.5" />
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent
-                                    class="max-w-[220px] text-xs"
-                                    side="top"
-                                >
-                                    When checked, "[Kitchen order]" is added to
-                                    the sale note when you save the sale.
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <UtensilsCrossed
-                            class="text-muted-foreground ml-auto size-3.5 shrink-0 opacity-70 sm:size-4"
-                            aria-hidden="true"
-                        />
                     </div>
                 </div>
                 <div

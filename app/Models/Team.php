@@ -167,14 +167,6 @@ class Team extends Model
     }
 
     /**
-     * @return HasMany<ModifierSet, $this>
-     */
-    public function modifierSets(): HasMany
-    {
-        return $this->hasMany(ModifierSet::class);
-    }
-
-    /**
      * @return HasMany<Product, $this>
      */
     public function products(): HasMany
@@ -188,22 +180,6 @@ class Team extends Model
     public function businessLocations(): HasMany
     {
         return $this->hasMany(BusinessLocation::class);
-    }
-
-    /**
-     * @return HasMany<RestaurantTable, $this>
-     */
-    public function restaurantTables(): HasMany
-    {
-        return $this->hasMany(RestaurantTable::class);
-    }
-
-    /**
-     * @return HasMany<Booking, $this>
-     */
-    public function bookings(): HasMany
-    {
-        return $this->hasMany(Booking::class);
     }
 
     /**

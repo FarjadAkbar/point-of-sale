@@ -66,7 +66,6 @@ const teamSlug = computed(
 
 const s = props.settings as {
     prefix?: string;
-    is_enable_service_staff_pin?: boolean;
     allow_login?: boolean;
     access_all_locations?: boolean;
     location_ids?: number[];
@@ -88,8 +87,6 @@ const form = useForm({
     password_confirmation: '',
     username: props.user.username ?? '',
     is_active: props.user.is_active,
-    is_enable_service_staff_pin: s.is_enable_service_staff_pin ?? false,
-    service_staff_pin: '',
     allow_login: s.allow_login ?? true,
     pos_role_id: props.pos_role_id ?? props.posRoles[0]?.id ?? 0,
     access_all_locations: s.access_all_locations ?? true,
@@ -127,15 +124,6 @@ watch(
     (v) => {
         if (v) {
             form.location_ids = [];
-        }
-    },
-);
-
-watch(
-    () => form.is_enable_service_staff_pin,
-    (v) => {
-        if (!v) {
-            form.service_staff_pin = '';
         }
     },
 );
@@ -269,33 +257,6 @@ function submit() {
                             <Label for="is_active" class="cursor-pointer">
                                 Is active
                             </Label>
-                        </div>
-                    </div>
-                    <div class="sm:col-span-12 flex flex-wrap items-center gap-4">
-                        <div class="flex items-center gap-2">
-                            <Checkbox
-                                id="pin_enable"
-                                :checked="form.is_enable_service_staff_pin"
-                                @update:checked="
-                                    (v) =>
-                                        (form.is_enable_service_staff_pin =
-                                            v === true)
-                                "
-                            />
-                            <Label for="pin_enable" class="cursor-pointer">
-                                Enable service staff PIN
-                            </Label>
-                        </div>
-                        <div v-if="form.is_enable_service_staff_pin" class="max-w-xs flex-1">
-                            <Label for="staff_pin">New staff PIN</Label>
-                            <Input
-                                id="staff_pin"
-                                v-model="form.service_staff_pin"
-                                class="mt-1"
-                                type="password"
-                                autocomplete="new-password"
-                                placeholder="Leave blank to keep current"
-                            />
                         </div>
                     </div>
                 </div>

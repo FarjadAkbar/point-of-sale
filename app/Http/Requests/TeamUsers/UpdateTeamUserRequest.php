@@ -33,8 +33,6 @@ class UpdateTeamUserRequest extends FormRequest
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'username' => ['nullable', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
-            'is_enable_service_staff_pin' => ['sometimes', 'boolean'],
-            'service_staff_pin' => ['nullable', 'string', 'min:4'],
             'allow_login' => ['sometimes', 'boolean'],
             'pos_role_id' => [
                 'required',

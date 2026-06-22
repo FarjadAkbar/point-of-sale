@@ -10,7 +10,6 @@ import type { Team } from '@/types';
 type PosRoleRow = {
     id: number;
     name: string;
-    is_service_staff: boolean;
     is_locked: boolean;
 };
 
@@ -98,9 +97,6 @@ function remove(row: PosRoleRow) {
                 <thead>
                     <tr class="border-b border-border bg-muted/40">
                         <th class="px-3 py-2 text-left font-medium">Name</th>
-                        <th class="px-3 py-2 text-left font-medium">
-                            Service staff
-                        </th>
                         <th class="px-3 py-2 text-left font-medium">Locked</th>
                         <th
                             v-if="showActionColumn"
@@ -117,9 +113,6 @@ function remove(row: PosRoleRow) {
                         class="border-b border-border/80 hover:bg-muted/20"
                     >
                         <td class="px-3 py-2 font-medium">{{ row.name }}</td>
-                        <td class="px-3 py-2">
-                            {{ row.is_service_staff ? 'Yes' : 'No' }}
-                        </td>
                         <td class="px-3 py-2">
                             {{ row.is_locked ? 'Yes' : 'No' }}
                         </td>

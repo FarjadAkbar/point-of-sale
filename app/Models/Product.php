@@ -28,7 +28,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'enable_imei_serial',
     'not_for_selling',
     'weight',
-    'preparation_time_minutes',
     'application_tax',
     'selling_price_tax_type',
     'product_type',

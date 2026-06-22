@@ -18,7 +18,6 @@ export type PermissionGroup = {
 
 type RoleForm = {
     name: string;
-    is_service_staff: boolean;
     permissions: string[];
     radio_options: Record<string, string>;
 };
@@ -118,26 +117,6 @@ function setRadio(name: string, value: string) {
                     />
                     <span class="text-sm">Select all</span>
                 </div>
-            </div>
-
-            <div
-                v-if="group.id === 'others'"
-                class="flex items-start gap-2 py-1"
-            >
-                <Checkbox
-                    :id="`is_service_staff_${group.id}`"
-                    :checked="form.is_service_staff"
-                    @update:checked="
-                        (v: boolean | 'indeterminate') =>
-                            (form.is_service_staff = v === true)
-                    "
-                />
-                <Label
-                    :for="`is_service_staff_${group.id}`"
-                    class="cursor-pointer font-normal leading-snug"
-                >
-                    Service staff
-                </Label>
             </div>
 
             <div

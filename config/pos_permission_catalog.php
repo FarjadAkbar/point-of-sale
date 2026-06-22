@@ -443,33 +443,10 @@ return [
         ],
     ],
     [
-        'id' => 'bookings',
-        'title' => 'Bookings',
-        'select_all' => true,
-        'radios' => [
-            [
-                'name' => 'bookings_view',
-                'options' => [
-                    ['value' => 'crud_all_bookings', 'label' => 'Add/Edit/View all bookings'],
-                    ['value' => 'crud_own_bookings', 'label' => 'Add/Edit/View own bookings'],
-                ],
-            ],
-        ],
-    ],
-    [
         'id' => 'selling_price',
         'title' => 'Access selling price groups',
         'checkboxes' => [
             ['value' => 'access_default_selling_price', 'label' => 'Default Selling Price'],
-        ],
-    ],
-    [
-        'id' => 'restaurant',
-        'title' => 'Restaurant',
-        'checkboxes' => [
-            ['value' => 'access_tables', 'label' => 'Access tables'],
-            ['value' => 'kitchen.access', 'label' => 'Access kitchen'],
-            ['value' => 'order.access', 'label' => 'Access orders'],
         ],
     ],
 ];
