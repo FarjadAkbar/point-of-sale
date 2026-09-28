@@ -1,1 +1,1 @@
-https://pos.ultimatefosters.com/home#
+POINT OF SALE
